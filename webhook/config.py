@@ -31,3 +31,9 @@ def get_provider():
             phone_number_id=settings.meta_phone_number_id,
             verify_token=settings.meta_verify_token,
         )
+
+
+def get_llm_client():
+    from .llm import GeminiClient
+
+    return GeminiClient(api_key=settings.gemini_api_key)

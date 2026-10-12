@@ -54,6 +54,7 @@ class MetaProvider:
         text = None
         media_id = None
         media_mime_type = None
+        button_id = None
 
         if msg_type == "text":
             text = msg["text"]["body"]
@@ -63,8 +64,13 @@ class MetaProvider:
         elif msg_type == "image":
             media_id = msg["image"]["id"]
             media_mime_type = msg["image"].get("mime_type")
+        elif msg_type == "interactive":
+            interactive = msg.get("interactive", {})
+            reply = interactive.get("button_reply") or interactive.get("list_reply") or {}
+            button_id = reply.get("id")
+            text = reply.get("title")
 
-        message_type = msg_type if msg_type in ("text", "audio", "image") else "unknown"
+        message_type = msg_type if msg_type in ("text", "audio", "image", "interactive") else "unknown"
 
         return IncomingMessage(
             from_number=from_number,
@@ -73,16 +79,58 @@ class MetaProvider:
             media_url=media_id,
             media_mime_type=media_mime_type,
             message_id=msg.get("id"),
+            button_id=button_id,
         )
 
     def send_message(self, to: str, text: str) -> None:
-        headers = {"Authorization": f"Bearer {self.access_token}"}
         payload = {
             "messaging_product": "whatsapp",
             "to": to,
             "type": "text",
             "text": {"body": text},
         }
+        self._send(payload)
+
+    def send_interactive_buttons(self, to: str, text: str, buttons: list[tuple[str, str]]) -> None:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "interactive",
+            "interactive": {
+                "type": "button",
+                "body": {"text": text},
+                "action": {
+                    "buttons": [
+                        {"type": "reply", "reply": {"id": button_id, "title": title}}
+                        for button_id, title in buttons
+                    ]
+                },
+            },
+        }
+        self._send(payload)
+
+    def send_interactive_list(self, to: str, text: str, button_label: str,
+                              rows: list[tuple[str, str]]) -> None:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "interactive",
+            "interactive": {
+                "type": "list",
+                "body": {"text": text},
+                "action": {
+                    "button": button_label,
+                    "sections": [{
+                        "title": "Treinos",
+                        "rows": [{"id": row_id, "title": title} for row_id, title in rows],
+                    }],
+                },
+            },
+        }
+        self._send(payload)
+
+    def _send(self, payload: Dict[str, Any]) -> None:
+        headers = {"Authorization": f"Bearer {self.access_token}"}
 
         for tentativa in range(self.attempts):
             try:

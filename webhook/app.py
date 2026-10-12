@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Request, BackgroundTasks
@@ -6,9 +7,12 @@ from fastapi.responses import PlainTextResponse
 from contextlib import asynccontextmanager
 
 from .config import settings, get_provider
-from .database import engine
+from .database import engine, SessionLocal
 from .models import Base
-from . import router
+from .handlers import HANDLERS
+from .schemas.replies import TextReply, ButtonsReply, ListReply
+
+from .repos.user_repo import get_or_create_user
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,8 +25,9 @@ provider = get_provider()
 
 app = FastAPI(
     title="Let me check",
-    description="Multi user whatsapp chatbot", 
-    version="1.0.0"
+    description="Multi user whatsapp chatbot",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -33,7 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router.router)
+
+##############################################################
+##############################################################
 
 
 async def _read_body(request):
@@ -45,16 +52,28 @@ async def _read_body(request):
     return dict(await request.form())
 
 
-def _process(text: str):
-    return (
-        f"Mensagem recebida: {text}\n"
-        "Obrigado por entrar em contato!"
-    )
+def _process(from_number: str, text: str, button_id: str | None = None):
+
+    with SessionLocal.begin() as db:
+        user = get_or_create_user(db, from_number)
+        user.last_message_at = datetime.now(timezone.utc)
+        reply, next_state = HANDLERS[user.state](db, user, text, button_id)
+
+        user.state = next_state
+
+        return reply
+
 
 def _process_and_reply(message):
+    
     try:
-        reply = _process(message.text)
-        provider.send_message(message.from_number, reply)
+        reply = _process(message.from_number, message.text, message.button_id)
+        if isinstance(reply, ButtonsReply):
+            provider.send_interactive_buttons(message.from_number, reply.text, reply.buttons)
+        elif isinstance(reply, ListReply):
+            provider.send_interactive_list(message.from_number, reply.text, reply.button_label, reply.rows)
+        else:
+            provider.send_message(message.from_number, reply.text)
         logger.info(f"Resposta enviada para {message.from_number}")
     except Exception:
         logger.exception(f"Falha ao processar/enviar a resposta para {message.from_number}")
@@ -86,8 +105,6 @@ async def receive_wap_message(request: Request, background: BackgroundTasks):
     if message is None:
         logger.info("Evento ignorado (status de entrega ou callback administrativo)")
         return PlainTextResponse("", status_code=200)
-
-    # _is_duplicate
 
     logger.info(
         f"Mensagem recebida | de={message.from_number} | tipo={message.message_type} | texto={message.text} | media_url={message.media_url}"

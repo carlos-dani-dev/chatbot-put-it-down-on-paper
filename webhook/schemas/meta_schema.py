@@ -10,3 +10,4 @@ class IncomingMessage:
     media_url: Optional[str] = None
     media_mime_type: Optional[str] = None
     message_id: Optional[str] = None
+    button_id: Optional[str] = None
