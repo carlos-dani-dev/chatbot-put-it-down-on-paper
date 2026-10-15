@@ -16,7 +16,7 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
     names = plan_repo.list_active_plan_names(db, user)
     user.state_data = {"step": "awaiting_plan"}
 
-    intro = "Vamos criar um treino novo! "
+    intro = "💪 Vamos criar um treino novo! "
     if names:
         intro += f"Você já criou: {', '.join(names)}. "
     return TextReply(
@@ -27,13 +27,13 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
 def plan_picker(plans, note: str="") -> ListReply | ButtonsReply:
     if not plans:
             return ButtonsReply(
-                f"{note}Você ainda não tem treinos salvos.",
+                f"{note}📋 Você ainda não tem treinos salvos.",
                 [("free", "Treino livre"), ("back", "Voltar")],
             )
 
     rows = [(f"plan:{p.id}", p.name[:24]) for p in plans]
     rows += [("free", "Treino livre"), ("back", "Voltar")]
-    return ListReply(f"{note}Qual treino vamos fazer hoje?", "Escolher", rows)
+    return ListReply(f"{note}🏋️ Qual treino vamos fazer hoje?", "Escolher", rows)
 
 
 def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, str]:
@@ -45,7 +45,7 @@ def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, 
 
 def idle_menu(intro: str = "") -> ButtonsReply:
     text = f"{intro}\n\n" if intro else ""
-    text += "O que vamos fazer agora?"
+    text += "🏋️ O que vamos fazer agora?"
     return ButtonsReply(
         text,
         [("create_plan", "Planejar treino"), ("start_session", "Iniciar treino")],

@@ -16,7 +16,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
         user.state_data = {"step": "awaiting_user_onboarding_reply"}
 
         reply = (
-                "Eai gym bro, seja bem vindo!\n"
+                "💪 Eai gym bro, seja bem vindo!\n"
                 "=> Registre treinos, séries e cargas em linguagem natural\n"
                 "=> Veja seus progressos em tempo real\n"
                 "=> Compartilhe seus resultados com amigos\n"
@@ -29,7 +29,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
         if button_id == "onb_no":
             
             user.onboarding_completed = True
-            return enter_idle(user, TextReply("Claro, me avise quando quiser continuar!"))
+            return enter_idle(user, TextReply("🙂 Claro, me avise quando quiser continuar!"))
         
         elif button_id == "onb_yes":
             
@@ -38,7 +38,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
             return enter_idle(user)
         
     reply = (
-                "Não entendi. Por favor, assinale a mensagem abaixo:\n"
+                "🤔 Não entendi. Por favor, assinale a mensagem abaixo:\n"
                 "Vamos começar?"
             )
     return ButtonsReply(reply, [("onb_yes", "Sim"), ("onb_no", "Não")] ), "onboarding"

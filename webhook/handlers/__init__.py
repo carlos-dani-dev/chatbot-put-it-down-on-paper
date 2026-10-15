@@ -3,6 +3,7 @@ from .idle import handle_idle
 from .planning import handle_planning
 from .session_setup import handle_session_setup
 from .session import handle_session
+from .commands import handle_universal_command
 
 HANDLERS = {
     "onboarding":    handle_onboarding,

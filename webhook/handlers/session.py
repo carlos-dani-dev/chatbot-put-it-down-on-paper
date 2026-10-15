@@ -36,17 +36,33 @@ class _Target:
     is_new: bool = False
 
 
+def _fmt_set(weight: float, reps: int) -> str:
+    w = "peso corporal" if weight == 0 else f"{weight:g}kg"
+    return f"{w} × {reps}"
+
+
 def handle_session(db, user, text=None, button_id=None):
     ws = session_repo.get_open_session(db, user)
     if ws is None:
-        return enter_idle(user, idle_menu("Não achei um treino em andamento."))
+        return enter_idle(user, idle_menu("🤔 Não achei um treino em andamento."))
 
     if button_id == "finish":
         n = session_repo.close_session(db, ws)
-        return enter_idle(user, TextReply(f"Treino finalizado!\n{n} séries registradas.\nMandou muito bem, te vejo no próximo treino!"))
+        return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\nMandou muito bem, te vejo no próximo treino!"))
+
+    if button_id == "edit":
+        removed = session_repo.undo_last_set(db, ws)
+        if removed is None:
+            return TextReply("🤔 Não tem nenhuma série registrada pra remover ainda."), "session"
+
+        ex = db.get(Exercise, removed.exercise_id)
+        return TextReply(
+            f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}). "
+            "Manda de novo com os valores certos."
+        ), "session"
 
     if button_id or not text: # botão antigo ou mídia
-        return TextReply("Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
+        return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
 
     return log_from_message(db, ws, text), "session"
 
@@ -97,11 +113,6 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
         )
         result = llm.generate(prompt, schema=ParsedSessionMessage)
         return ParsedSessionMessage.model_validate_json(result)
-    
-
-    def _fmt_set(weight: float, reps: int) -> str:
-        w = "peso corporal" if weight == 0 else f"{weight:g}kg"
-        return f"{w} × {reps}"
 
     plan_idx = _plan_index()
     current = db.get(Exercise, ws.current_exercise_id) if ws.current_exercise_id else None
@@ -111,10 +122,10 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
             text, [ex.name for _, ex in plan_idx.values()], current.name if current else None
         )
     except Exception:                                    # timeout, erro de API, JSON inválido
-        return TextReply("Tive um problema pra entender a mensagem. Pode mandar de novo?")
- 
+        return TextReply("🤔 Tive um problema pra entender a mensagem. Pode mandar de novo?")
+
     if parsed.intent != "log_sets" or not parsed.entries:
-        return TextReply("Me manda as séries, ex.: *supino 80kg 8 reps*")
+        return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*")
  
     # passo 1: resolver e validar TUDO, sem gravar nada
     prepared: list[tuple[_Target, list[tuple[float, int, int | None]]]] = []
@@ -122,7 +133,7 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
     for entry in parsed.entries:
         target = _resolve(plan_idx, entry.exercise)
         if target is None:
-            return TextReply("Qual exercício? Me manda o nome junto, ex.: *supino 80kg 8 reps*")
+            return TextReply("🤔 Qual exercício? Me manda o nome junto, ex.: *supino 80kg 8 reps*")
 
         weight = session_repo.get_last_weight(db, ws.id, target.exercise.id) if target.exercise else None
         sets = []
@@ -131,7 +142,7 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
                 weight = s.weight_kg
             if weight is None:
                 return TextReply(
-                    f"Qual a carga no *{target.name}*? Manda de novo com o peso, "
+                    f"🤔 Qual a carga no *{target.name}*? Manda de novo com o peso, "
                     f"ex.: *{target.name} 80kg {s.reps} reps*"
                 )
             if not (0 <= weight <= 500 and 1 <= s.reps <= 100):
@@ -147,7 +158,7 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
             prepared.append((target, sets))
  
     if not prepared or total > MAX_SETS_PER_MESSAGE:
-        return TextReply("Não consegui registrar. Manda poucas séries por vez, ex.: *supino 80kg 8 reps*")
+        return TextReply("🤔 Não consegui registrar. Manda poucas séries por vez, ex.: *supino 80kg 8 reps*")
  
     # passo 2: gravar
     lines = []
@@ -172,4 +183,4 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
         detail = ", ".join(_fmt_set(w, r) for w, r, _ in sets)
         lines.append(f"✅ *{ex.name}*: {label} ({detail})\n{tail}")
  
-    return ButtonsReply("\n\n".join(lines), [("finish", "Finalizar treino")])
+    return ButtonsReply("\n\n".join(lines), [("finish", "Finalizar treino"), ("edit", "Editar série")])

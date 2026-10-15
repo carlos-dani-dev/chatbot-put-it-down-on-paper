@@ -35,6 +35,31 @@ def close_session(db: Any, ws: WorkoutSession) -> int:
     return count_sets(db, ws.id)
 
 
+def cancel_session(db: Any, ws: WorkoutSession) -> None:
+    """Apaga a sessão e, em cascata, todas as séries registradas nela."""
+    db.delete(ws)
+
+
+def get_last_set(db: Any, session_id: int) -> WorkoutSet | None:
+    return db.scalar(
+        select(WorkoutSet)
+        .where(WorkoutSet.session_id == session_id)
+        .order_by(WorkoutSet.id.desc())
+        .limit(1)
+    )
+
+
+def undo_last_set(db: Any, ws: WorkoutSession) -> WorkoutSet | None:
+    """Remove a última série registrada na sessão, pra ser recadastrada em seguida."""
+    last_set = get_last_set(db, ws.id)
+    if last_set is None:
+        return None
+
+    db.delete(last_set)
+    db.flush()
+    return last_set
+
+
 def get_last_weight(db: Any, session_id: int, exercise_id: int) -> float | None:
     w = db.scalar(
         select(WorkoutSet.weight_kg)

@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from .config import settings, get_provider
 from .database import engine, SessionLocal
 from .models import Base
-from .handlers import HANDLERS
+from .handlers import HANDLERS, handle_universal_command
 from .schemas.replies import TextReply, ButtonsReply, ListReply
 
 from .repos.user_repo import get_or_create_user
@@ -57,7 +57,12 @@ def _process(from_number: str, text: str, button_id: str | None = None):
     with SessionLocal.begin() as db:
         user = get_or_create_user(db, from_number)
         user.last_message_at = datetime.now(timezone.utc)
-        reply, next_state = HANDLERS[user.state](db, user, text, button_id)
+
+        command_result = handle_universal_command(db, user, text) if button_id is None else None
+        if command_result is not None:
+            reply, next_state = command_result
+        else:
+            reply, next_state = HANDLERS[user.state](db, user, text, button_id)
 
         user.state = next_state
 

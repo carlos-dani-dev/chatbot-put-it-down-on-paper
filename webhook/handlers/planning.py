@@ -42,7 +42,7 @@ def _parse_plan(text: str) -> tuple[str, list[dict]]:
 def _draft_menu(draft: dict) -> ButtonsReply:
     lines = [f"- {item['name']} ({item['target_sets']}x)" for item in draft["items"]]
     text = (
-        f"Plano *{draft['name']}*:\n"
+        f"📝 Plano *{draft['name']}*:\n"
         + "\n".join(lines)
         + "\n\nManda mais exercícios ou escolha uma opção:"
     )
@@ -58,7 +58,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         plan_name, items = _parse_plan(text)
     
         if not items:
-            return TextReply("Não identifiquei nenhum exercício. Por favor, tente novamente!"), "planning"
+            return TextReply("🤔 Não identifiquei nenhum exercício. Por favor, tente novamente!"), "planning"
     
         draft = {"name": plan_name, "items": items}
         user.state_data = {"step": "building", "draft": draft}
@@ -69,9 +69,9 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         draft = user.state_data.get("draft")
         if button_id == "plan_save":
             plan_repo.save_plan(db, user, draft)
-            return enter_idle(user, TextReply(f"Plano *{draft['name']}* salvo!"))
+            return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
         elif button_id == "plan_cancel":
-            return enter_idle(user, idle_menu("Treino cancelado!"))
+            return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
         if text:
             new_items = _parse_exercises(text)
             if new_items:
