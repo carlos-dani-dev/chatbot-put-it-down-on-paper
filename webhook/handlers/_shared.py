@@ -16,11 +16,11 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
     names = plan_repo.list_active_plan_names(db, user)
     user.state_data = {"step": "awaiting_plan"}
 
-    intro = "💪 Vamos criar um treino novo! "
+    intro = "💪 Vamos criar um treino novo!"
     if names:
-        intro += f"Você já criou: {', '.join(names)}. "
+        intro += f"\nVocê já criou: {', '.join(names)}."
     return TextReply(
-        intro + "Me manda o nome e os exercícios, ex.: *Costas: remada 4, puxada 3*"
+        intro + "\n\nMe manda o nome e os exercícios, ex.: *Costas: remada 4, puxada 3*"
     ), "planning"
 
 

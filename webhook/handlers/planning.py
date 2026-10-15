@@ -69,7 +69,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         draft = user.state_data.get("draft")
         if button_id == "plan_save":
             plan_repo.save_plan(db, user, draft)
-            return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
+            return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
         elif button_id == "plan_cancel":
             return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
         if text:

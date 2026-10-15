@@ -16,10 +16,10 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
         user.state_data = {"step": "awaiting_user_onboarding_reply"}
 
         reply = (
-                "💪 Eai gym bro, seja bem vindo!\n"
-                "=> Registre treinos, séries e cargas em linguagem natural\n"
-                "=> Veja seus progressos em tempo real\n"
-                "=> Compartilhe seus resultados com amigos\n"
+                "💪 Eai gym bro, seja bem vindo!\n\n"
+                "- Registre treinos, séries e cargas em linguagem natural\n"
+                "- Veja seus progressos em tempo real\n"
+                "- Compartilhe seus resultados com amigos\n\n"
                 "Vamos começar?"
             )
         return ButtonsReply(reply, [("onb_yes", "Sim"), ("onb_no", "Não")]), next_state

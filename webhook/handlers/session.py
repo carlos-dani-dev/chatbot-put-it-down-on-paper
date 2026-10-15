@@ -48,7 +48,7 @@ def handle_session(db, user, text=None, button_id=None):
 
     if button_id == "finish":
         n = session_repo.close_session(db, ws)
-        return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\nMandou muito bem, te vejo no próximo treino!"))
+        return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
 
     if button_id == "edit":
         removed = session_repo.undo_last_set(db, ws)
@@ -57,7 +57,7 @@ def handle_session(db, user, text=None, button_id=None):
 
         ex = db.get(Exercise, removed.exercise_id)
         return TextReply(
-            f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}). "
+            f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}).\n\n"
             "Manda de novo com os valores certos."
         ), "session"
 
