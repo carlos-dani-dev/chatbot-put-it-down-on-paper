@@ -6,7 +6,7 @@ from ..schemas.replies import TextReply, ButtonsReply
 from ._shared import enter_idle
 
 
-def handle_onboarding(db: Any | None, user: User, button_id: str | None = None) -> tuple[TextReply | ButtonsReply, str]:
+def handle_onboarding(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply | ButtonsReply, str]:
 
     step = user.state_data.get("step")
 
