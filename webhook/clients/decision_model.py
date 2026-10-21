@@ -81,11 +81,12 @@ _ANSWER_TYPES: dict[str, type[pydantic.BaseModel]] = {
 class MercuryDecideClient:
     """Cliente pro Mercury Decide (Inception Labs) via OpenRouter.
 
-    Fala o mesmo protocolo "System One" do Jev (/v1/systemone), só que via
-    uma chamada HTTP direta — o pacote `ai` não tem um provider pro OpenRouter.
+    Fala o protocolo de Decisions da OpenRouter (/api/alpha/decisions),
+    o mesmo formato "System One" do Jev — só que via chamada HTTP direta,
+    já que o pacote `ai` não tem um provider pro OpenRouter.
     """
 
-    BASE_URL = "https://openrouter.ai/api/v1/systemone"
+    BASE_URL = "https://openrouter.ai/api/alpha/decisions"
     DEFAULT_MODEL = "inception/mercury-decide:free"
 
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, attempts: int = ATTEMPTS):
