@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 
-from ._shared import enter_idle
+from ._shared import enter_idle, _PRODUCT_FAQ
 from ..config import get_llm_client, get_decider_client
 
 decider = get_decider_client()
@@ -21,17 +21,6 @@ _AWAITING_USER_ONBOARDING_REPLY_CRITERIA = {
     "question": "Pergunta"
 }
 
-_PRODUCT_FAQ = (
-    "Você é o assistente do chatbot de treino no WhatsApp. O usuário está no "
-    "onboarding e fez uma pergunta sobre o produto. Responda breve e "
-    "amigável, usando só estas informações:\n\n"
-    "- Registra treinos, séries e cargas mandando mensagem de texto normal.\n"
-    "- Um modelo de IA interpreta o que foi digitado (exercício, peso, reps).\n"
-    "- Dá pra criar plano de treino com antecedência ou treinar livre.\n"
-    "- O progresso fica salvo automaticamente, comparado com a meta do plano.\n\n"
-    f"Pergunta do usuário: "
-)
-
 def handle_onboarding(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply | ButtonsReply, str]:
 
     step = user.state_data.get("step")
@@ -48,7 +37,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
                 "- Compartilhe seus resultados com amigos\n\n"
                 "Vamos começar?"
             )
-        return ButtonsReply(reply, [("onb_yes", "Sim"), ("onb_no", "Não")]), next_state
+        return TextReply(reply), next_state
     
     elif step == "awaiting_user_onboarding_reply":
 
@@ -84,13 +73,10 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
 
         elif answer.choice == "question":
 
+            next_state = "onboarding"
             reply = llm.generate(_PRODUCT_FAQ + text)
-            return ButtonsReply(
-                f"{reply}\n\nEaí, vamos começar?", [("onb_yes", "Sim"), ("onb_no", "Não")]
-            ), "onboarding"
 
-    reply = (
-                "🤔 Não entendi. Por favor, assinale a mensagem abaixo:\n"
-                "Vamos começar?"
-                )
-    return ButtonsReply(reply, [("onb_yes", "Sim"), ("onb_no", "Não")] ), "onboarding"
+            return ButtonsReply(f"{reply}\n\nEaí, vamos começar?"), next_state
+
+    reply = ("Não entendi. Por favor, Pode repetir?")
+    return TextReply(reply), "onboarding"

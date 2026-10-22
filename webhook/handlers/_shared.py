@@ -4,6 +4,17 @@ from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply, ListReply
 from ..repos import plan_repo
 
+_PRODUCT_FAQ = (
+    "Você é o assistente do chatbot de treino no WhatsApp. O usuário fez uma "
+    "pergunta sobre o produto. Responda breve e amigável, usando só estas "
+    "informações:\n\n"
+    "- Registra treinos, séries e cargas mandando mensagem de texto normal.\n"
+    "- Um modelo de IA interpreta o que foi digitado (exercício, peso, reps).\n"
+    "- Dá pra criar plano de treino com antecedência ou treinar livre.\n"
+    "- O progresso fica salvo automaticamente, comparado com a meta do plano.\n\n"
+    "Pergunta do usuário: "
+)
+
 
 def enter_idle(user: User, reply=None) -> tuple[TextReply | ButtonsReply, str]:
 

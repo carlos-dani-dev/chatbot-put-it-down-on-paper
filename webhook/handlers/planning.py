@@ -4,11 +4,34 @@ from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 from ..schemas.llm_response import ParsedExercises, ParsedPlan
 
-from ._shared import enter_idle, idle_menu
-from ..config import get_llm_client
+from ._shared import enter_idle, idle_menu, _PRODUCT_FAQ
+from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo
 
 llm = get_llm_client()
+decider = get_decider_client()
+
+_AWAITING_PLAN_INSTRUCTIONS = (
+    "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
+    "ou pode estar tirando uma dúvida sobre como o app funciona."
+)
+
+_AWAITING_PLAN_CRITERIA = {
+    "create_plan": "Está descrevendo um plano de treino, com exercícios",
+    "question": "Está fazendo uma pergunta sobre como o app funciona",
+    "unclear": "Não dá pra saber o que ele quer",
+}
+
+_BUILDING_INSTRUCTIONS = (
+    "O usuário já tem um rascunho de plano de treino e pode estar adicionando "
+    "mais exercícios a ele, ou tirando uma dúvida sobre como o app funciona."
+)
+
+_BUILDING_CRITERIA = {
+    "add_exercises": "Está citando mais exercícios pra incluir no plano",
+    "question": "Está fazendo uma pergunta sobre como o app funciona",
+    "unclear": "Não é possível identificar exercício nenhum na mensagem",
+}
 
 _EXERCISES_PROMPT = (
     "A mensagem a seguir é de um usuário de um app de treino, listando exercícios "
@@ -54,12 +77,22 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
     step = user.state_data.get("step")
 
     if step == "awaiting_plan":
-    
+
+        answer = decider.choose(
+            state=text,
+            instructions=_AWAITING_PLAN_INSTRUCTIONS,
+            criteria=_AWAITING_PLAN_CRITERIA,
+        )
+
+        if (answer.confidence or 0) >= 0.6 and answer.choice == "question":
+            reply = llm.generate(_PRODUCT_FAQ + text)
+            return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
+        
         plan_name, items = _parse_plan(text)
-    
+
         if not items:
             return TextReply("🤔 Não identifiquei nenhum exercício. Por favor, tente novamente!"), "planning"
-    
+
         draft = {"name": plan_name, "items": items}
         user.state_data = {"step": "building", "draft": draft}
         return _draft_menu(draft), "planning"
@@ -72,7 +105,18 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
         elif button_id == "plan_cancel":
             return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
+
         if text:
+            answer = decider.choose(
+                state=text,
+                instructions=_BUILDING_INSTRUCTIONS,
+                criteria=_BUILDING_CRITERIA,
+            )
+
+            if (answer.confidence or 0) >= 0.6 and answer.choice == "question":
+                reply = llm.generate(_PRODUCT_FAQ + text)
+                return TextReply(f"{reply}\n\nManda mais exercícios ou escolha uma opção."), "planning"
+
             new_items = _parse_exercises(text)
             if new_items:
                 draft = {**draft, "items": draft["items"] + new_items}
