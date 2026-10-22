@@ -87,11 +87,11 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         if (answer.confidence or 0) >= 0.6 and answer.choice == "question":
             reply = llm.generate(_PRODUCT_FAQ + text)
             return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
-        
+
         plan_name, items = _parse_plan(text)
 
         if not items:
-            return TextReply("🤔 Não identifiquei nenhum exercício. Por favor, tente novamente!"), "planning"
+            return TextReply("Não identifiquei nenhum exercício.\nTenta me mandar algo como Peito: 3s de 10reps"), "planning"
 
         draft = {"name": plan_name, "items": items}
         user.state_data = {"step": "building", "draft": draft}

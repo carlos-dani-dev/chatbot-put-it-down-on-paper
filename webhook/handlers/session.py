@@ -6,13 +6,29 @@ from ..models import PlanExercise, Exercise, WorkoutSession
 from ..schemas.replies import TextReply, ButtonsReply
 from ..schemas.llm_response import ParsedSessionMessage
 
-from ._shared import enter_idle, idle_menu
-from ..config import get_llm_client
+from ._shared import enter_idle, idle_menu, _PRODUCT_FAQ
+from ..config import get_llm_client, get_decider_client
 from ..repos import exercise_repo, plan_repo, session_repo
 
 llm = get_llm_client()
+decider = get_decider_client()
 
 MAX_SETS_PER_MESSAGE = 20
+
+_SESSION_INSTRUCTIONS = (
+    "O usuário está numa sessão de treino ativa e pode estar registrando uma "
+    "série (exercício, peso, repetições), querendo encerrar o treino, "
+    "querendo corrigir a última série registrada, ou tirando uma dúvida "
+    "sobre como o app funciona."
+)
+
+_SESSION_CRITERIA = {
+    "log_sets": "Está relatando uma ou mais séries: exercício, peso e repetições",
+    "finish": "Quer encerrar o treino de hoje",
+    "edit_last": "Quer corrigir ou desfazer a última série registrada",
+    "question": "Está fazendo uma pergunta sobre como o app funciona",
+    "unclear": "Não dá pra saber o que ele quer",
+}
 
 _SESSION_PROMPT = (
     "Você interpreta mensagens de um usuário registrando séries numa academia.\n"
@@ -41,28 +57,51 @@ def _fmt_set(weight: float, reps: int) -> str:
     return f"{w} × {reps}"
 
 
+def _finish(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
+    n = session_repo.close_session(db, ws)
+    return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
+
+
+def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
+    removed = session_repo.undo_last_set(db, ws)
+    if removed is None:
+        return TextReply("🤔 Não tem nenhuma série registrada pra remover ainda."), "session"
+
+    ex = db.get(Exercise, removed.exercise_id)
+    return TextReply(
+        f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}).\n\n"
+        "Manda de novo com os valores certos."
+    ), "session"
+
+
 def handle_session(db, user, text=None, button_id=None):
     ws = session_repo.get_open_session(db, user)
     if ws is None:
         return enter_idle(user, idle_menu("🤔 Não achei um treino em andamento."))
 
     if button_id == "finish":
-        n = session_repo.close_session(db, ws)
-        return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
+        return _finish(db, user, ws)
 
     if button_id == "edit":
-        removed = session_repo.undo_last_set(db, ws)
-        if removed is None:
-            return TextReply("🤔 Não tem nenhuma série registrada pra remover ainda."), "session"
-
-        ex = db.get(Exercise, removed.exercise_id)
-        return TextReply(
-            f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}).\n\n"
-            "Manda de novo com os valores certos."
-        ), "session"
+        return _edit_last(db, ws)
 
     if button_id or not text: # botão antigo ou mídia
         return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
+
+    answer = decider.choose(
+        state=text,
+        instructions=_SESSION_INSTRUCTIONS,
+        criteria=_SESSION_CRITERIA,
+    )
+
+    if (answer.confidence or 0) >= 0.6:
+        if answer.choice == "finish":
+            return _finish(db, user, ws)
+        elif answer.choice == "edit_last":
+            return _edit_last(db, ws)
+        elif answer.choice == "question":
+            reply = llm.generate(_PRODUCT_FAQ + text)
+            return TextReply(f"{reply}\n\nMe manda as séries quando quiser continuar."), "session"
 
     return log_from_message(db, ws, text), "session"
 
