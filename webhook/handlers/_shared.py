@@ -44,7 +44,7 @@ def plan_picker(plans, note: str="") -> ListReply | ButtonsReply:
 
     rows = [(f"plan:{p.id}", p.name[:24]) for p in plans]
     rows += [("free", "Treino livre"), ("back", "Voltar")]
-    return ListReply(f"{note}🏋️ Qual treino vamos fazer hoje?", "Escolher", rows)
+    return ListReply(f"{note}🏋️ Boa, então conta pra mim, qual treino vamos fazer hoje?", "Escolher", rows)
 
 
 def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, str]:
@@ -54,10 +54,10 @@ def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, 
     return plan_picker(plan_repo.list_active_plans(db, user, limit=8)), "session_setup"
 
 
-def idle_menu(intro: str = "") -> ButtonsReply:
+def idle_menu(intro: str = "") -> TextReply:
     text = f"{intro}\n\n" if intro else ""
-    text += "🏋️ O que vamos fazer agora?"
-    return ButtonsReply(
-        text,
-        [("create_plan", "Planejar treino"), ("start_session", "Iniciar treino")],
-    )
+    text += (
+         "🏋️ Eai, o que vamos fazer agora?\n"
+         "Você prefere **Planejar um treino** ou **Começar uma sessão de treino**?"
+        )
+    return TextReply(text)

@@ -1,7 +1,7 @@
 from typing import Any
 
 from ..models import User
-from ..schemas.replies import TextReply, ButtonsReply
+from ..schemas.replies import TextReply
 from ..schemas.llm_response import ParsedExercises, ParsedPlan
 
 from ._shared import enter_idle, idle_menu, _PRODUCT_FAQ
@@ -29,6 +29,8 @@ _BUILDING_INSTRUCTIONS = (
 
 _BUILDING_CRITERIA = {
     "add_exercises": "Está citando mais exercícios pra incluir no plano",
+    "save": "Quer salvar o plano do jeito que está",
+    "cancel": "Quer cancelar, descartar o plano que estava montando",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não é possível identificar exercício nenhum na mensagem",
 }
@@ -62,17 +64,26 @@ def _parse_plan(text: str) -> tuple[str, list[dict]]:
     return parsed.name, [item.model_dump() for item in parsed.items]
 
 
-def _draft_menu(draft: dict) -> ButtonsReply:
+def _draft_menu(draft: dict) -> TextReply:
     lines = [f"- {item['name']} ({item['target_sets']}x)" for item in draft["items"]]
     text = (
         f"📝 Plano *{draft['name']}*:\n"
         + "\n".join(lines)
-        + "\n\nManda mais exercícios ou escolha uma opção:"
+        + "\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar o plano."
     )
-    return ButtonsReply(text, [("plan_save", "Salvar"), ("plan_cancel", "Cancelar")])
+    return TextReply(text)
 
 
-def handle_planning(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply | ButtonsReply, str]:
+def _save_plan(db: Any, user: User, draft: dict) -> tuple[TextReply, str]:
+    plan_repo.save_plan(db, user, draft)
+    return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
+
+
+def _cancel_plan(user: User) -> tuple[TextReply, str]:
+    return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
+
+
+def handle_planning(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply, str]:
 
     step = user.state_data.get("step")
 
@@ -100,11 +111,10 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
     elif step == "building":
 
         draft = user.state_data.get("draft")
-        if button_id == "plan_save":
-            plan_repo.save_plan(db, user, draft)
-            return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
+        if button_id == "plan_save":  # legado, caso alguém ainda toque num botão antigo
+            return _save_plan(db, user, draft)
         elif button_id == "plan_cancel":
-            return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
+            return _cancel_plan(user)
 
         if text:
             answer = decider.choose(
@@ -113,9 +123,14 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 criteria=_BUILDING_CRITERIA,
             )
 
-            if (answer.confidence or 0) >= 0.6 and answer.choice == "question":
-                reply = llm.generate(_PRODUCT_FAQ + text)
-                return TextReply(f"{reply}\n\nManda mais exercícios ou escolha uma opção."), "planning"
+            if (answer.confidence or 0) >= 0.6:
+                if answer.choice == "save":
+                    return _save_plan(db, user, draft)
+                elif answer.choice == "cancel":
+                    return _cancel_plan(user)
+                elif answer.choice == "question":
+                    reply = llm.generate(_PRODUCT_FAQ + text)
+                    return TextReply(f"{reply}\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar."), "planning"
 
             new_items = _parse_exercises(text)
             if new_items:
