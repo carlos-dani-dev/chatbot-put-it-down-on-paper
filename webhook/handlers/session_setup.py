@@ -46,7 +46,10 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
 
         session = session_repo.start_session(db, user, plan_id=plan.id)
         user.state_data = {"session_id": session.id}
-        return TextReply(f"💪 Treino *{plan.name}* iniciado! Bora!"), "session"
+        return TextReply(
+            f"💪 Treino *{plan.name}* iniciado! Bora!\n"
+            "Começa me mandando o exercício, o peso que você usou e quantas séries você fez."
+            ), "session"
 
     if text:
         answer = decider.choose(
@@ -63,5 +66,10 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
             elif answer.choice == "question":
                 reply = llm.generate(_PRODUCT_FAQ + text)
                 return plan_picker(plan_repo.list_active_plans(db, user, limit=8), f"{reply}\n\n"), "session_setup"
+
+        return plan_picker(
+            plan_repo.list_active_plans(db, user, limit=8),
+            "🤔 Não entendi. Escolha um dos treinos da lista abaixo.\n\n",
+        ), "session_setup"
 
     return plan_picker(plan_repo.list_active_plans(db, user, limit=8)), "session_setup"

@@ -16,9 +16,10 @@ _PRODUCT_FAQ = (
 )
 
 
-def enter_idle(user: User, reply=None) -> tuple[TextReply | ButtonsReply, str]:
+def enter_idle(user: User, reply=None, clear_data: bool = True) -> tuple[TextReply | ButtonsReply, str]:
 
-    user.state_data = {}
+    if clear_data:
+        user.state_data = {}
 
     return (reply or idle_menu()), "idle"
 
@@ -31,20 +32,22 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
     if names:
         intro += f"\nVocê já criou: {', '.join(names)}."
     return TextReply(
-        intro + "\n\nMe manda o nome e os exercícios, ex.: *Costas: remada 4, puxada 3*"
+        intro + "\n\nMe manda o nome, os exercícios e a quantidade de séries de cada um\nex.: *Costas: remada 4, puxada 3*"
     ), "planning"
 
 
 def plan_picker(plans, note: str="") -> ListReply | ButtonsReply:
     if not plans:
             return ButtonsReply(
-                f"{note}📋 Você ainda não tem treinos salvos.",
-                [("free", "Treino livre"), ("back", "Voltar")],
+                f"{note}📋 Você ainda não tem treinos salvos."
+                "\n\nSe quiser *voltar* para o menu anterior é só me avisar!",
+                [("free", "Treino livre")],
             )
 
     rows = [(f"plan:{p.id}", p.name[:24]) for p in plans]
-    rows += [("free", "Treino livre"), ("back", "Voltar")]
-    return ListReply(f"{note}🏋️ Boa, então conta pra mim, qual treino vamos fazer hoje?", "Escolher", rows)
+    rows += [("free", "Treino livre")]
+    return ListReply(f"{note}🏋️ Boa, então conta pra mim, qual treino vamos fazer hoje?"
+                     "\n\nSe quiser *voltar* para o menu anterior é só me avisar!", "Escolher", rows)
 
 
 def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, str]:
@@ -58,6 +61,6 @@ def idle_menu(intro: str = "") -> TextReply:
     text = f"{intro}\n\n" if intro else ""
     text += (
          "🏋️ Eai, o que vamos fazer agora?\n"
-         "Você prefere **Planejar um treino** ou **Começar uma sessão de treino**?"
+         "Você prefere *Planejar um treino* ou *Começar uma sessão de treino*?"
         )
     return TextReply(text)

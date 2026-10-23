@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from .config import settings, get_provider
 from .database import engine, SessionLocal
 from .models import Base
-from .handlers import HANDLERS, handle_universal_command
+from .handlers import HANDLERS, handle_universal_command, handle_resume_check
 from .schemas.replies import TextReply, ButtonsReply, ListReply
 
 from .repos.user_repo import get_or_create_user
@@ -56,11 +56,21 @@ def _process(from_number: str, text: str, button_id: str | None = None):
 
     with SessionLocal.begin() as db:
         user = get_or_create_user(db, from_number)
+        last_seen = user.last_message_at
+        if last_seen is not None and last_seen.tzinfo is None:
+            # SQLite não preserva timezone no round-trip; sempre gravamos em UTC
+            last_seen = last_seen.replace(tzinfo=timezone.utc)
         user.last_message_at = datetime.now(timezone.utc)
+        gap = (user.last_message_at - last_seen) if last_seen else None
 
-        command_result = handle_universal_command(db, user, text) if button_id is None else None
-        if command_result is not None:
-            reply, next_state = command_result
+        intercept_result = None
+        if button_id is None:
+            intercept_result = handle_universal_command(db, user, text)
+            if intercept_result is None:
+                intercept_result = handle_resume_check(db, user, text, gap)
+
+        if intercept_result is not None:
+            reply, next_state = intercept_result
         else:
             reply, next_state = HANDLERS[user.state](db, user, text, button_id)
 

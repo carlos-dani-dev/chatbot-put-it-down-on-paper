@@ -32,9 +32,9 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
 
         reply = (
                 "💪 Eai gym bro, seja bem vindo!\n\n"
-                "- Registre treinos, séries e cargas em linguagem natural\n"
-                "- Veja seus progressos em tempo real\n"
-                "- Compartilhe seus resultados com amigos\n\n"
+                "*Registre treinos*, séries e cargas em linguagem natural\n"
+                "*Veja seus progressos* em tempo real\n"
+                "*Compartilhe* seus resultados com amigos\n\n"
                 "Vamos começar?"
             )
         return TextReply(reply), next_state

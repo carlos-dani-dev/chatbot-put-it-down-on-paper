@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select, text
@@ -31,6 +32,10 @@ def get_user_plan(db: Any, user: User, plan_id: int) -> Plan | None:
     if plan is None or plan.user_id != user.id:
         return None
     return plan
+
+
+def archive_plan(db: Any, plan: Plan) -> None:
+    plan.archived_at = datetime.now(timezone.utc)
 
 
 def get_plan_exercises(db: Any, plan_id: int) -> list[tuple[PlanExercise, Exercise]]:

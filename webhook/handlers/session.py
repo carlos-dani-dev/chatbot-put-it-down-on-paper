@@ -70,7 +70,7 @@ def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
     ex = db.get(Exercise, removed.exercise_id)
     return TextReply(
         f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}).\n\n"
-        "Manda de novo com os valores certos."
+        "Você já pode mandar de novo, mas agora com os valores certos."
     ), "session"
 
 

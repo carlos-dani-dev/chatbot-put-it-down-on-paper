@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply, ListReply
 
-from ._shared import enter_idle, idle_menu
+from ._shared import enter_idle
 from ..repos import session_repo
 
 DASHBOARD_URL = "https://dashboard.exemplo.com/treinos"
@@ -25,10 +25,10 @@ def _handle_cancelar(db: Any, user: User) -> tuple[TextReply | ButtonsReply | Li
         ws = session_repo.get_open_session(db, user)
         if ws is not None:
             session_repo.cancel_session(db, ws)
-        return enter_idle(user, idle_menu("↩️ Treino cancelado. Nenhuma série foi salva."))
+        return enter_idle(user)
 
     if user.state == "planning":
-        return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
+        return enter_idle(user)
 
     return TextReply(_CANCEL_WRONG_STATE_MESSAGE), user.state
 

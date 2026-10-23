@@ -18,9 +18,15 @@ _AWAITING_PLAN_INSTRUCTIONS = (
 
 _AWAITING_PLAN_CRITERIA = {
     "create_plan": "Está descrevendo um plano de treino, com exercícios",
+    "delete_plan": "Quer excluir um plano de treino já salvo",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }
+
+_DELETE_PLAN_INSTRUCTIONS = (
+    "O usuário está escolhendo qual plano de treino salvo ele quer excluir, "
+    "dizendo o nome do plano, ou pode estar mudando de ideia e desistindo."
+)
 
 _BUILDING_INSTRUCTIONS = (
     "O usuário já tem um rascunho de plano de treino e pode estar adicionando "
@@ -65,9 +71,9 @@ def _parse_plan(text: str) -> tuple[str, list[dict]]:
 
 
 def _draft_menu(draft: dict) -> TextReply:
-    lines = [f"- {item['name']} ({item['target_sets']}x)" for item in draft["items"]]
+    lines = [f"{item['name']} ({item['target_sets']}x)" for item in draft["items"]]
     text = (
-        f"📝 Plano *{draft['name']}*:\n"
+        f"📝 Plano *{draft['name']}*:\n\n"
         + "\n".join(lines)
         + "\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar o plano."
     )
@@ -83,6 +89,11 @@ def _cancel_plan(user: User) -> tuple[TextReply, str]:
     return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
 
 
+def _delete_plan_menu(plans, note: str = "") -> TextReply:
+    lines = [f"- {p.name}" for p in plans]
+    return TextReply(f"{note}🗑️ Qual plano você quer excluir?\n\n" + "\n".join(lines))
+
+
 def handle_planning(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply, str]:
 
     step = user.state_data.get("step")
@@ -95,18 +106,52 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             criteria=_AWAITING_PLAN_CRITERIA,
         )
 
-        if (answer.confidence or 0) >= 0.6 and answer.choice == "question":
-            reply = llm.generate(_PRODUCT_FAQ + text)
-            return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
+        if (answer.confidence or 0) >= 0.6:
+            if answer.choice == "question":
+                reply = llm.generate(_PRODUCT_FAQ + text)
+                return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
+            elif answer.choice == "delete_plan":
+                plans = plan_repo.list_active_plans(db, user, limit=8)
+                if not plans:
+                    return TextReply("📋 Você ainda não tem nenhum plano salvo pra excluir."), "planning"
+                user.state_data = {"step": "deleting_plan"}
+                return _delete_plan_menu(plans), "planning"
 
         plan_name, items = _parse_plan(text)
 
         if not items:
-            return TextReply("Não identifiquei nenhum exercício.\nTenta me mandar algo como Peito: 3s de 10reps"), "planning"
+            return TextReply("Não identifiquei nenhum exercício.\nTenta me mandar algo como Peito: Supino reto 3s"), "planning"
 
         draft = {"name": plan_name, "items": items}
         user.state_data = {"step": "building", "draft": draft}
         return _draft_menu(draft), "planning"
+
+    elif step == "deleting_plan":
+
+        plans = plan_repo.list_active_plans(db, user, limit=8)
+        if not plans:
+            return enter_idle(user)
+
+        criteria = {f"plan:{p.id}": p.name for p in plans}
+        criteria["none"] = "Mudou de ideia, não quer excluir nenhum plano"
+
+        answer = decider.choose(
+            state=text,
+            instructions=_DELETE_PLAN_INSTRUCTIONS,
+            criteria=criteria,
+        )
+
+        if (answer.confidence or 0) >= 0.6:
+            if answer.choice == "none":
+                return enter_idle(user)
+            if answer.choice.startswith("plan:"):
+                plan_id = int(answer.choice.split(":", 1)[1])
+                plan = plan_repo.get_user_plan(db, user, plan_id)
+                if plan is not None:
+                    plan_repo.archive_plan(db, plan)
+                    return enter_idle(user, TextReply(f"🗑️ Plano *{plan.name}* excluído."))
+
+        return _delete_plan_menu(plans, "🤔 Não entendi. "), "planning"
 
     elif step == "building":
 
