@@ -89,7 +89,7 @@ def handle_session(db, user, text=None, button_id=None):
         return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
 
     answer = decider.choose(
-        state=text,
+        state=text.lower(),
         instructions=_SESSION_INSTRUCTIONS,
         criteria=_SESSION_CRITERIA,
     )

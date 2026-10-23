@@ -53,7 +53,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
             return enter_idle(user)
         
     answer = decider.choose(
-        state=text,
+        state=(text or "").lower(),
         instructions=_AWAITING_USER_ONBOARDING_REPLY_INSTRUCTIONS,
         criteria=_AWAITING_USER_ONBOARDING_REPLY_CRITERIA,
     )

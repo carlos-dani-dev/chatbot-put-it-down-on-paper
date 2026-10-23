@@ -32,7 +32,7 @@ def handle_idle(db: Any | None, user: User, text: str | None = None, button_id: 
 
     if text:
         answer = decider.choose(
-            state=text,
+            state=text.lower(),
             instructions=_IDLE_INSTRUCTIONS,
             criteria=_IDLE_CRITERIA,
         )

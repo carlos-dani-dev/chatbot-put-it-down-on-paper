@@ -53,7 +53,7 @@ def handle_resume_check(db: Any, user: User, text: str | None, gap) -> tuple[Tex
 
     if user.state_data.get("resume_check"):
         answer = decider.choose(
-            state=text or "",
+            state=(text or "").lower(),
             instructions=_RESUME_INSTRUCTIONS,
             criteria=_RESUME_CRITERIA,
         )

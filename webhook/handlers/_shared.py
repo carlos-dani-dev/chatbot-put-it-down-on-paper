@@ -32,7 +32,7 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
     if names:
         intro += f"\nVocê já criou: {', '.join(names)}."
     return TextReply(
-        intro + "\n\nMe manda o nome, os exercícios e a quantidade de séries de cada um\nex.: *Costas: remada 4, puxada 3*"
+        intro + "\n\nMe manda o nome, os exercícios e a quantidade de séries de cada um.\nex.: *Costas: remada 4, puxada 3*"
     ), "planning"
 
 

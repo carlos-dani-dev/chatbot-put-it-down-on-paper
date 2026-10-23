@@ -53,7 +53,7 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
 
     if text:
         answer = decider.choose(
-            state=text,
+            state=text.lower(),
             instructions=_SESSION_SETUP_INSTRUCTIONS,
             criteria=_SESSION_SETUP_CRITERIA,
         )

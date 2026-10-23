@@ -90,8 +90,8 @@ def _cancel_plan(user: User) -> tuple[TextReply, str]:
 
 
 def _delete_plan_menu(plans, note: str = "") -> TextReply:
-    lines = [f"- {p.name}" for p in plans]
-    return TextReply(f"{note}🗑️ Qual plano você quer excluir?\n\n" + "\n".join(lines))
+    lines = [f"*{p.name}*" for p in plans]
+    return TextReply(f"{note}🗑️ Selecione um dos planos abaixo para *excluir*\n\n" + "\n".join(lines))
 
 
 def handle_planning(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply, str]:
@@ -101,7 +101,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
     if step == "awaiting_plan":
 
         answer = decider.choose(
-            state=text,
+            state=(text or "").lower(),
             instructions=_AWAITING_PLAN_INSTRUCTIONS,
             criteria=_AWAITING_PLAN_CRITERIA,
         )
@@ -136,7 +136,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         criteria["none"] = "Mudou de ideia, não quer excluir nenhum plano"
 
         answer = decider.choose(
-            state=text,
+            state=(text or "").lower(),
             instructions=_DELETE_PLAN_INSTRUCTIONS,
             criteria=criteria,
         )
@@ -149,7 +149,10 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 plan = plan_repo.get_user_plan(db, user, plan_id)
                 if plan is not None:
                     plan_repo.archive_plan(db, plan)
-                    return enter_idle(user, TextReply(f"🗑️ Plano *{plan.name}* excluído."))
+                    user.state_data = {}
+                    return idle_menu(TextReply(
+                        f"🗑️ Plano *{plan.name}* excluído.\n\n"
+                                                      ))
 
         return _delete_plan_menu(plans, "🤔 Não entendi. "), "planning"
 
@@ -163,7 +166,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
         if text:
             answer = decider.choose(
-                state=text,
+                state=text.lower(),
                 instructions=_BUILDING_INSTRUCTIONS,
                 criteria=_BUILDING_CRITERIA,
             )
