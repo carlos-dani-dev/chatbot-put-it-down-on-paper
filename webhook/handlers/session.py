@@ -79,12 +79,6 @@ def handle_session(db, user, text=None, button_id=None):
     if ws is None:
         return enter_idle(db, user, idle_menu(db, user, "🤔 Não achei um treino em andamento."))
 
-    if button_id == "finish":
-        return _finish(db, user, ws)
-
-    if button_id == "edit":
-        return _edit_last(db, ws)
-
     if button_id or not text: # botão antigo ou mídia
         return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
 

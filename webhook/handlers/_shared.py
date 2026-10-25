@@ -38,6 +38,34 @@ _ENTER_PLANNING_PROMPT = (
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
 )
 
+_LIST_PLANS_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer ver quais "
+    "planos de treino ele já tem salvos.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Planos de treino salvos: {plans}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental listar os nomes de TODOS os planos salvos acima, numa única linha, "
+    "separados por vírgula.\n"
+    "- Pergunte se ele quer criar um plano novo, excluir um dos listados, ou começar um treino.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_NO_PLANS_SAVED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer ver quais "
+    "planos de treino ele já tem salvos, mas ele não tem nenhum plano salvo ainda.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Avise que não há nenhum plano salvo ainda.\n"
+    "- É fundamental sugerir que ele pode *criar um plano novo* me mandando o nome e os exercícios.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
 _DELETE_PLAN_MENU_PROMPT = (
     "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer excluir "
     "um plano de treino salvo.\n\n"
@@ -199,6 +227,21 @@ def idle_menu(db: Any, user: User, intro: str = "") -> TextReply:
         history=_recent_history(db, user),
         intro=f"{intro}\n\n" if intro else "",
     )
+    return TextReply(_generate(prompt))
+
+
+def list_plans_menu(db: Any, user: User, plans) -> TextReply:
+
+    prompt = _LIST_PLANS_PROMPT.format(
+        history=_recent_history(db, user),
+        plans=", ".join(p.name for p in plans),
+    )
+    return TextReply(_generate(prompt))
+
+
+def no_plans_saved(db: Any, user: User) -> TextReply:
+
+    prompt = _NO_PLANS_SAVED_PROMPT.format(history=_recent_history(db, user))
     return TextReply(_generate(prompt))
 
 

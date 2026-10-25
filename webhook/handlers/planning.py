@@ -6,6 +6,8 @@ from ..schemas.llm_response import ParsedExercises, ParsedPlan
 
 from ._shared import (
     enter_idle,
+    list_plans_menu,
+    no_plans_saved,
     delete_plan_menu,
     no_plans_to_delete,
     no_exercises_identified,
@@ -22,11 +24,13 @@ decider = get_decider_client()
 
 _AWAITING_PLAN_INSTRUCTIONS = (
     "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
+    "quer ver os planos que já tem salvos, quer excluir um plano salvo, "
     "ou pode estar tirando uma dúvida sobre como o app funciona."
 )
 
 _AWAITING_PLAN_CRITERIA = {
     "create_plan": "Está descrevendo um plano de treino, com exercícios",
+    "list_plans": "Quer ver quais planos de treino já tem salvos",
     "delete_plan": "Quer excluir um plano de treino já salvo",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
@@ -104,6 +108,11 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             if answer.choice == "question":
                 reply = llm.generate(_PRODUCT_FAQ + text)
                 return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
+            elif answer.choice == "list_plans":
+                plans = plan_repo.list_active_plans(db, user, limit=8)
+                if not plans:
+                    return no_plans_saved(db, user), "planning"
+                return list_plans_menu(db, user, plans), "planning"
             elif answer.choice == "delete_plan":
                 plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
