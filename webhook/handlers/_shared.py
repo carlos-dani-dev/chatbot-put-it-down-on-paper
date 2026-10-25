@@ -7,6 +7,102 @@ from ..config import get_llm_client
 
 llm = get_llm_client()
 
+
+def _recent_history(db: Any, user: User, limit: int = 2) -> str:
+    last_messages = chat_message_repo.get_last_messages(db, user, limit=limit)
+    return "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
+
+
+_ENTER_PLANNING_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer criar um "
+    "plano de treino novo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Planos de treino que ele já tem salvos (pode estar vazio): {plans}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- Se ele já tiver planos salvos, cite os nomes deles.\n"
+    "- É de suma importância pedir SEMPRE o nome do plano novo e os exercícios (com a "
+    "quantidade de séries de cada um) — sem isso o plano não pode ser criado.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_DELETE_PLAN_MENU_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer excluir "
+    "um plano de treino salvo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Planos de treino salvos, que ele pode escolher excluir: {plans}\n\n"
+    "{intro}"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- É fundamental listar os nomes de TODOS os planos salvos acima, numa única linha, "
+    "separados por vírgula.\n"
+    "- Peça pra ele dizer o nome exato de um dos planos listados, pra confirmar a exclusão.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_NO_PLANS_TO_DELETE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário pediu pra "
+    "excluir um plano de treino, mas ele não tem nenhum plano salvo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- Avise que não há nenhum plano salvo pra excluir.\n"
+    "- É fundamental sugerir que ele pode *criar um plano novo* me mandando o nome e os exercícios.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_NO_EXERCISES_PARSED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário tentou descrever "
+    "um plano de treino novo, mas não foi possível identificar nenhum exercício na mensagem.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- Avise que não identificou nenhum exercício.\n"
+    "- É fundamental pedir de novo o nome do plano e os exercícios, com a quantidade de "
+    "séries de cada um, e dar um exemplo curto (ex.: *Peito: Supino 3 séries*).\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_DRAFT_MENU_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está montando um "
+    "plano de treino novo, ainda não salvo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano: {name}\n"
+    "Exercícios já incluídos (nome e número de séries): {items}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- É fundamental listar, numa única linha, todos os exercícios já incluídos acima "
+    "com a quantidade de séries de cada um.\n"
+    "- Pergunte se ele quer adicionar mais exercícios, salvar ou cancelar o plano.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_PLAN_SAVED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário acabou de salvar "
+    "um plano de treino novo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano salvo: {name}\n"
+    "Exercícios do plano (nome e número de séries): {items}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- Confirme que o plano foi salvo, citando o nome dele.\n"
+    "- É fundamental informar que ele pode *Começar um treino* ou *Planejar outro treino* "
+    "quando quiser — escreva essas duas opções exatamente assim, em negrito.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
+_PLAN_CANCELED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário acabou de "
+    "cancelar/descartar o plano de treino que estava montando.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- Confirme que o plano foi cancelado/descartado.\n"
+    "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
+    "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
+
 _PRODUCT_FAQ = (
     "Você é o assistente do chatbot de treino no WhatsApp. O usuário fez uma "
     "pergunta sobre o produto. Responda breve e amigável, usando só estas "
@@ -42,18 +138,18 @@ def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
     names = plan_repo.list_active_plan_names(db, user)
     user.state_data = {"step": "awaiting_plan"}
 
-    intro = "💪 Vamos criar um treino novo!"
-    if names:
-        intro += f"\nVocê já criou: {', '.join(names)}."
-    return TextReply(
-        intro + "\n\nMe manda o nome, os exercícios e a quantidade de séries de cada um.\nex.: *Costas: remada 4, puxada 3*"
-    ), "planning"
+    prompt = _ENTER_PLANNING_PROMPT.format(
+        history=_recent_history(db, user),
+        plans=", ".join(names) if names else "(nenhum)",
+    )
+    return TextReply(llm.generate(prompt)), "planning"
 
 
 def plan_picker(plans, note: str="") -> ListReply | ButtonsReply:
     if not plans:
             return ButtonsReply(
-                f"{note}📋 Você ainda não tem treinos salvos."
+                f"{note}📋 Você ainda não tem treinos salvos.\n"
+                "Que tal começar um *treino livre*? É só escolher aqui embaixo!"
                 "\n\nSe quiser *voltar* para o menu anterior é só me avisar!",
                 [("free", "Treino livre")],
             )
@@ -73,11 +169,58 @@ def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, 
 
 def idle_menu(db: Any, user: User, intro: str = "") -> TextReply:
 
-    last_messages = chat_message_repo.get_last_messages(db, user, limit=2)
-    history = "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
-
     prompt = _IDLE_MENU_PROMPT.format(
-        history=history,
+        history=_recent_history(db, user),
         intro=f"{intro}\n\n" if intro else "",
     )
+    return TextReply(llm.generate(prompt))
+
+
+def delete_plan_menu(db: Any, user: User, plans, note: str = "") -> TextReply:
+
+    prompt = _DELETE_PLAN_MENU_PROMPT.format(
+        history=_recent_history(db, user),
+        plans=", ".join(p.name for p in plans),
+        intro=f"{note}\n\n" if note else "",
+    )
+    return TextReply(llm.generate(prompt))
+
+
+def no_plans_to_delete(db: Any, user: User) -> TextReply:
+
+    prompt = _NO_PLANS_TO_DELETE_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(llm.generate(prompt))
+
+
+def no_exercises_identified(db: Any, user: User) -> TextReply:
+
+    prompt = _NO_EXERCISES_PARSED_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(llm.generate(prompt))
+
+
+def draft_menu(db: Any, user: User, draft: dict) -> TextReply:
+
+    items = ", ".join(f"{item['name']} ({item['target_sets']}x)" for item in draft["items"])
+    prompt = _DRAFT_MENU_PROMPT.format(
+        history=_recent_history(db, user),
+        name=draft["name"],
+        items=items,
+    )
+    return TextReply(llm.generate(prompt))
+
+
+def plan_saved(db: Any, user: User, draft: dict) -> TextReply:
+
+    items = ", ".join(f"{item['name']} ({item['target_sets']}x)" for item in draft["items"])
+    prompt = _PLAN_SAVED_PROMPT.format(
+        history=_recent_history(db, user),
+        name=draft["name"],
+        items=items,
+    )
+    return TextReply(llm.generate(prompt))
+
+
+def plan_canceled(db: Any, user: User) -> TextReply:
+
+    prompt = _PLAN_CANCELED_PROMPT.format(history=_recent_history(db, user))
     return TextReply(llm.generate(prompt))

@@ -4,7 +4,16 @@ from ..models import User
 from ..schemas.replies import TextReply
 from ..schemas.llm_response import ParsedExercises, ParsedPlan
 
-from ._shared import enter_idle, idle_menu, _PRODUCT_FAQ
+from ._shared import (
+    enter_idle,
+    delete_plan_menu,
+    no_plans_to_delete,
+    no_exercises_identified,
+    draft_menu,
+    plan_saved,
+    plan_canceled,
+    _PRODUCT_FAQ,
+)
 from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo
 
@@ -70,28 +79,13 @@ def _parse_plan(text: str) -> tuple[str, list[dict]]:
     return parsed.name, [item.model_dump() for item in parsed.items]
 
 
-def _draft_menu(draft: dict) -> TextReply:
-    lines = [f"{item['name']} ({item['target_sets']}x)" for item in draft["items"]]
-    text = (
-        f"📝 Plano *{draft['name']}*:\n\n"
-        + "\n".join(lines)
-        + "\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar o plano."
-    )
-    return TextReply(text)
-
-
 def _save_plan(db: Any, user: User, draft: dict) -> tuple[TextReply, str]:
     plan_repo.save_plan(db, user, draft)
-    return enter_idle(db, user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
+    return enter_idle(db, user, plan_saved(db, user, draft))
 
 
 def _cancel_plan(db: Any, user: User) -> tuple[TextReply, str]:
-    return enter_idle(db, user, idle_menu(db, user, "↩️ Treino cancelado!"))
-
-
-def _delete_plan_menu(plans, note: str = "") -> TextReply:
-    lines = [f"*{p.name}*" for p in plans]
-    return TextReply(f"{note}🗑️ Selecione um dos planos abaixo para *excluir*\n\n" + "\n".join(lines))
+    return enter_idle(db, user, plan_canceled(db, user))
 
 
 def handle_planning(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply, str]:
@@ -113,18 +107,18 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             elif answer.choice == "delete_plan":
                 plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
-                    return TextReply("📋 Você ainda não tem nenhum plano salvo pra excluir."), "planning"
+                    return no_plans_to_delete(db, user), "planning"
                 user.state_data = {"step": "deleting_plan"}
-                return _delete_plan_menu(plans), "planning"
+                return delete_plan_menu(db, user, plans), "planning"
 
         plan_name, items = _parse_plan(text)
 
         if not items:
-            return TextReply("Não identifiquei nenhum exercício.\nTenta me mandar algo como Peito: Supino reto 3s"), "planning"
+            return no_exercises_identified(db, user), "planning"
 
         draft = {"name": plan_name, "items": items}
         user.state_data = {"step": "building", "draft": draft}
-        return _draft_menu(draft), "planning"
+        return draft_menu(db, user, draft), "planning"
 
     elif step == "deleting_plan":
 
@@ -151,7 +145,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     plan_repo.archive_plan(db, plan)
                     return enter_idle(db, user, TextReply(f"🗑️ Plano *{plan.name}* excluído."))
 
-        return _delete_plan_menu(plans, "🤔 Não entendi. "), "planning"
+        return delete_plan_menu(db, user, plans, "🤔 Não entendi. "), "planning"
 
     elif step == "building":
 
@@ -181,4 +175,4 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             if new_items:
                 draft = {**draft, "items": draft["items"] + new_items}
                 user.state_data = {"step": "building", "draft": draft}
-        return _draft_menu(draft), "planning"
+        return draft_menu(db, user, draft), "planning"
