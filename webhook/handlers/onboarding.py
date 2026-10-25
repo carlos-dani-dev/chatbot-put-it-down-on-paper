@@ -42,15 +42,15 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
     elif step == "awaiting_user_onboarding_reply":
 
         if button_id == "onb_no":
-            
+
             user.onboarding_completed = True
-            return enter_idle(user, TextReply("🙂 Claro, me avise quando quiser continuar!"))
-        
+            return enter_idle(db, user, TextReply("🙂 Claro, me avise quando quiser continuar!"))
+
         elif button_id == "onb_yes":
-            
+
             user.onboarding_completed = True
-            
-            return enter_idle(user)
+
+            return enter_idle(db, user)
         
     answer = decider.choose(
         state=(text or "").lower(),
@@ -63,13 +63,13 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
 
             user.onboarding_completed = True
 
-            return enter_idle(user)
+            return enter_idle(db, user)
 
         elif answer.choice == "not_start":
 
             user.onboarding_completed = True
 
-            return enter_idle(user, TextReply("🙂 Claro, me avise quando quiser continuar!"))
+            return enter_idle(db, user, TextReply("🙂 Claro, me avise quando quiser continuar!"))
 
         elif answer.choice == "question":
 

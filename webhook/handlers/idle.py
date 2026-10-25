@@ -44,6 +44,6 @@ def handle_idle(db: Any | None, user: User, text: str | None = None, button_id: 
                 return enter_session_setup(db, user)
             elif answer.choice == "question":
                 reply = llm.generate(_PRODUCT_FAQ + text)
-                return idle_menu(reply), "idle"
+                return idle_menu(db, user, reply), "idle"
 
-    return idle_menu(), "idle"
+    return idle_menu(db, user), "idle"

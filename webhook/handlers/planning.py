@@ -82,11 +82,11 @@ def _draft_menu(draft: dict) -> TextReply:
 
 def _save_plan(db: Any, user: User, draft: dict) -> tuple[TextReply, str]:
     plan_repo.save_plan(db, user, draft)
-    return enter_idle(user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
+    return enter_idle(db, user, TextReply(f"✅ Plano *{draft['name']}* salvo!\n\nMe avisa quando você quiser *Começar um treino* ou *Planejar outro treino*"))
 
 
-def _cancel_plan(user: User) -> tuple[TextReply, str]:
-    return enter_idle(user, idle_menu("↩️ Treino cancelado!"))
+def _cancel_plan(db: Any, user: User) -> tuple[TextReply, str]:
+    return enter_idle(db, user, idle_menu(db, user, "↩️ Treino cancelado!"))
 
 
 def _delete_plan_menu(plans, note: str = "") -> TextReply:
@@ -130,7 +130,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
         plans = plan_repo.list_active_plans(db, user, limit=8)
         if not plans:
-            return enter_idle(user)
+            return enter_idle(db, user)
 
         criteria = {f"plan:{p.id}": p.name for p in plans}
         criteria["none"] = "Mudou de ideia, não quer excluir nenhum plano"
@@ -143,16 +143,13 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "none":
-                return enter_idle(user)
+                return enter_idle(db, user)
             if answer.choice.startswith("plan:"):
                 plan_id = int(answer.choice.split(":", 1)[1])
                 plan = plan_repo.get_user_plan(db, user, plan_id)
                 if plan is not None:
                     plan_repo.archive_plan(db, plan)
-                    user.state_data = {}
-                    return idle_menu(TextReply(
-                        f"🗑️ Plano *{plan.name}* excluído.\n\n"
-                                                      ))
+                    return enter_idle(db, user, TextReply(f"🗑️ Plano *{plan.name}* excluído."))
 
         return _delete_plan_menu(plans, "🤔 Não entendi. "), "planning"
 
@@ -162,7 +159,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         if button_id == "plan_save":  # legado, caso alguém ainda toque num botão antigo
             return _save_plan(db, user, draft)
         elif button_id == "plan_cancel":
-            return _cancel_plan(user)
+            return _cancel_plan(db, user)
 
         if text:
             answer = decider.choose(
@@ -175,7 +172,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 if answer.choice == "save":
                     return _save_plan(db, user, draft)
                 elif answer.choice == "cancel":
-                    return _cancel_plan(user)
+                    return _cancel_plan(db, user)
                 elif answer.choice == "question":
                     reply = llm.generate(_PRODUCT_FAQ + text)
                     return TextReply(f"{reply}\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar."), "planning"

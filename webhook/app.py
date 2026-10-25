@@ -13,6 +13,7 @@ from .handlers import HANDLERS, handle_universal_command, handle_resume_check
 from .schemas.replies import TextReply, ButtonsReply, ListReply
 
 from .repos.user_repo import get_or_create_user
+from .repos import chat_message_repo
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,7 +53,7 @@ async def _read_body(request):
     return dict(await request.form())
 
 
-def _process(from_number: str, text: str, button_id: str | None = None):
+def _process(from_number: str, text: str, button_id: str | None = None, message_id: str | None = None):
 
     with SessionLocal.begin() as db:
         user = get_or_create_user(db, from_number)
@@ -62,6 +63,9 @@ def _process(from_number: str, text: str, button_id: str | None = None):
             last_seen = last_seen.replace(tzinfo=timezone.utc)
         user.last_message_at = datetime.now(timezone.utc)
         gap = (user.last_message_at - last_seen) if last_seen else None
+
+        if text:
+            chat_message_repo.log_message(db, user, "user", text, wa_message_id=message_id)
 
         intercept_result = None
         if button_id is None:
@@ -74,15 +78,17 @@ def _process(from_number: str, text: str, button_id: str | None = None):
         else:
             reply, next_state = HANDLERS[user.state](db, user, text, button_id)
 
+        chat_message_repo.log_message(db, user, "assistant", reply.text)
+
         user.state = next_state
 
         return reply
 
 
 def _process_and_reply(message):
-    
+
     try:
-        reply = _process(message.from_number, message.text, message.button_id)
+        reply = _process(message.from_number, message.text, message.button_id, message.message_id)
         if isinstance(reply, ButtonsReply):
             provider.send_interactive_buttons(message.from_number, reply.text, reply.buttons)
         elif isinstance(reply, ListReply):

@@ -61,7 +61,7 @@ def handle_resume_check(db: Any, user: User, text: str | None, gap) -> tuple[Tex
 
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "stop":
-                return enter_idle(user, clear_data=False)
+                return enter_idle(db, user, clear_data=False)
             elif answer.choice == "continue":
                 return TextReply("👍 Beleza, pode mandar de novo!"), user.state
 

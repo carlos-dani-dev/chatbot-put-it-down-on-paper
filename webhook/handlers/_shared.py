@@ -2,7 +2,10 @@ from typing import Any
 
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply, ListReply
-from ..repos import plan_repo
+from ..repos import plan_repo, chat_message_repo
+from ..config import get_llm_client
+
+llm = get_llm_client()
 
 _PRODUCT_FAQ = (
     "Você é o assistente do chatbot de treino no WhatsApp. O usuário fez uma "
@@ -15,13 +18,24 @@ _PRODUCT_FAQ = (
     "Pergunta do usuário: "
 )
 
+_IDLE_MENU_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está de volta "
+    "ao menu principal.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "{intro}"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- No máximo 3 linhas.\n"
+    "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
+    "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
+)
 
-def enter_idle(user: User, reply=None, clear_data: bool = True) -> tuple[TextReply | ButtonsReply, str]:
+def enter_idle(db: Any, user: User, reply=None, clear_data: bool = True) -> tuple[TextReply | ButtonsReply, str]:
 
     if clear_data:
         user.state_data = {}
 
-    return (reply or idle_menu()), "idle"
+    return (reply or idle_menu(db, user)), "idle"
 
 
 def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
@@ -57,10 +71,13 @@ def enter_session_setup(db: Any, user: User) -> tuple[TextReply | ButtonsReply, 
     return plan_picker(plan_repo.list_active_plans(db, user, limit=8)), "session_setup"
 
 
-def idle_menu(intro: str = "") -> TextReply:
-    text = f"{intro}\n\n" if intro else ""
-    text += (
-         "🏋️ Eai, o que vamos fazer agora?\n"
-         "Você prefere *Planejar um treino* ou *Começar uma sessão de treino*?"
-        )
-    return TextReply(text)
+def idle_menu(db: Any, user: User, intro: str = "") -> TextReply:
+
+    last_messages = chat_message_repo.get_last_messages(db, user, limit=2)
+    history = "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
+
+    prompt = _IDLE_MENU_PROMPT.format(
+        history=history,
+        intro=f"{intro}\n\n" if intro else "",
+    )
+    return TextReply(llm.generate(prompt))

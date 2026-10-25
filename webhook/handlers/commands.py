@@ -25,10 +25,10 @@ def _handle_cancelar(db: Any, user: User) -> tuple[TextReply | ButtonsReply | Li
         ws = session_repo.get_open_session(db, user)
         if ws is not None:
             session_repo.cancel_session(db, ws)
-        return enter_idle(user)
+        return enter_idle(db, user)
 
     if user.state == "planning":
-        return enter_idle(user)
+        return enter_idle(db, user)
 
     return TextReply(_CANCEL_WRONG_STATE_MESSAGE), user.state
 

@@ -33,7 +33,7 @@ def _start_free(db: Any, user: User) -> tuple[TextReply, str]:
 def handle_session_setup(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[Any, str]:
 
     if button_id == "back":
-        return enter_idle(user)
+        return enter_idle(db, user)
 
     if button_id == "free":
         return _start_free(db, user)
@@ -62,7 +62,7 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
             if answer.choice == "free":
                 return _start_free(db, user)
             elif answer.choice == "back":
-                return enter_idle(user)
+                return enter_idle(db, user)
             elif answer.choice == "question":
                 reply = llm.generate(_PRODUCT_FAQ + text)
                 return plan_picker(plan_repo.list_active_plans(db, user, limit=8), f"{reply}\n\n"), "session_setup"

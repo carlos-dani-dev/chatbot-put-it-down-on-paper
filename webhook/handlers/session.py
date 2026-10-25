@@ -59,7 +59,7 @@ def _fmt_set(weight: float, reps: int) -> str:
 
 def _finish(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
     n = session_repo.close_session(db, ws)
-    return enter_idle(user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
+    return enter_idle(db, user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
 
 
 def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
@@ -77,7 +77,7 @@ def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
 def handle_session(db, user, text=None, button_id=None):
     ws = session_repo.get_open_session(db, user)
     if ws is None:
-        return enter_idle(user, idle_menu("🤔 Não achei um treino em andamento."))
+        return enter_idle(db, user, idle_menu(db, user, "🤔 Não achei um treino em andamento."))
 
     if button_id == "finish":
         return _finish(db, user, ws)
