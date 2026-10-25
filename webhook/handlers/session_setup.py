@@ -18,6 +18,7 @@ _SESSION_SETUP_INSTRUCTIONS = (
 
 _SESSION_SETUP_CRITERIA = {
     "free": "Quer treinar livre, sem seguir um plano",
+    "start": "Quer começar um treino agora, mas não disse se é livre ou com plano salvo",
     "back": "Quer voltar, desistir de iniciar um treino agora",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
@@ -61,6 +62,8 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "free":
                 return _start_free(db, user)
+            elif answer.choice == "start":
+                return plan_picker(plan_repo.list_active_plans(db, user, limit=8)), "session_setup"
             elif answer.choice == "back":
                 return enter_idle(db, user)
             elif answer.choice == "question":
