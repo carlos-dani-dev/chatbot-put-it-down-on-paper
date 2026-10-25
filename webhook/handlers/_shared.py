@@ -21,8 +21,8 @@ _ENTER_PLANNING_PROMPT = (
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- No máximo 3 linhas.\n"
     "- Se ele já tiver planos salvos, cite os nomes deles.\n"
-    "- É de suma importância pedir SEMPRE o nome do plano novo e os exercícios (com a "
-    "quantidade de séries de cada um) — sem isso o plano não pode ser criado.\n"
+    "- É de suma importância pedir SEMPRE o nome do plano novo, os exercícios e a"
+    "quantidade de séries para cada um deles — sem isso o plano não pode ser criado.\n"
     "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona)."
 )
 
