@@ -28,6 +28,7 @@ _ENTER_PLANNING_PROMPT = (
     "plano de treino novo.\n\n"
     "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Planos de treino que ele já tem salvos (pode estar vazio): {plans}\n\n"
+    "{note}"
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- Seja sucinto e direto ao ponto, sem enrolação.\n"
     "- Se ele já tiver planos salvos, cite os nomes deles.\n"
@@ -115,6 +116,7 @@ _DRAFT_MENU_PROMPT = (
     "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Nome do plano: {name}\n"
     "Exercícios já incluídos (nome e número de séries): {items}\n\n"
+    "{note}"
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- Seja sucinto e direto ao ponto, sem enrolação.\n"
     "- É fundamental listar, numa única linha, todos os exercícios já incluídos acima "
@@ -133,7 +135,7 @@ _PLAN_SAVED_PROMPT = (
     "Exercícios do plano (nome e número de séries): {items}\n\n"
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- Seja sucinto e direto ao ponto, sem enrolação.\n"
-    "- Confirme que o plano foi salvo, citando o nome dele.\n"
+    "- Confirme que o plano foi salvo, citando o nome dele em negrito.\n"
     "- É fundamental informar que ele pode *Começar um treino* ou *Planejar outro treino* "
     "quando quiser — escreva essas duas opções exatamente assim, em negrito.\n"
     "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
@@ -148,6 +150,21 @@ _PLAN_CANCELED_PROMPT = (
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- Seja sucinto e direto ao ponto, sem enrolação.\n"
     "- Confirme que o plano foi cancelado/descartado.\n"
+    "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
+    "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_PLAN_DELETED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário acabou de excluir "
+    "um plano de treino salvo.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano excluído: {name}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Confirme que o plano foi excluído, citando o nome dele em negrito.\n"
     "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
     "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
     "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
@@ -188,13 +205,14 @@ def enter_idle(db: Any, user: User, reply=None, clear_data: bool = True) -> tupl
     return (reply or idle_menu(db, user)), "idle"
 
 
-def enter_planning(db, user: User) -> tuple[TextReply | ButtonsReply, str]:
+def enter_planning(db, user: User, note: str = "") -> tuple[TextReply | ButtonsReply, str]:
     names = plan_repo.list_active_plan_names(db, user)
     user.state_data = {"step": "awaiting_plan"}
 
     prompt = _ENTER_PLANNING_PROMPT.format(
         history=_recent_history(db, user),
         plans=", ".join(names) if names else "(nenhum)",
+        note=f"{note}\n\n" if note else "",
     )
     return TextReply(_generate(prompt)), "planning"
 
@@ -267,13 +285,14 @@ def no_exercises_identified(db: Any, user: User) -> TextReply:
     return TextReply(_generate(prompt))
 
 
-def draft_menu(db: Any, user: User, draft: dict) -> TextReply:
+def draft_menu(db: Any, user: User, draft: dict, note: str = "") -> TextReply:
 
     items = ", ".join(f"{item['name']} ({item['target_sets']}x)" for item in draft["items"])
     prompt = _DRAFT_MENU_PROMPT.format(
         history=_recent_history(db, user),
         name=draft["name"],
         items=items,
+        note=f"{note}\n\n" if note else "",
     )
     return TextReply(_generate(prompt))
 
@@ -292,4 +311,10 @@ def plan_saved(db: Any, user: User, draft: dict) -> TextReply:
 def plan_canceled(db: Any, user: User) -> TextReply:
 
     prompt = _PLAN_CANCELED_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def plan_deleted(db: Any, user: User, plan_name: str) -> TextReply:
+
+    prompt = _PLAN_DELETED_PROMPT.format(history=_recent_history(db, user), name=plan_name)
     return TextReply(_generate(prompt))

@@ -15,6 +15,7 @@ from ._shared import (
     draft_menu,
     plan_saved,
     plan_canceled,
+    plan_deleted,
     _PRODUCT_FAQ,
 )
 from ..config import get_llm_client, get_decider_client
@@ -109,7 +110,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "question":
                 reply = llm.generate(_PRODUCT_FAQ + text)
-                return TextReply(f"{reply}\n\nMe manda o nome e os exercícios do plano quando quiser."), "planning"
+                return enter_planning(db, user, reply)
             elif answer.choice == "start":
                 return enter_planning(db, user)
             elif answer.choice == "list_plans":
@@ -156,7 +157,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 plan = plan_repo.get_user_plan(db, user, plan_id)
                 if plan is not None:
                     plan_repo.archive_plan(db, plan)
-                    return enter_idle(db, user, TextReply(f"🗑️ Plano *{plan.name}* excluído."))
+                    return enter_idle(db, user, plan_deleted(db, user, plan.name))
 
         return delete_plan_menu(db, user, plans, "🤔 Não entendi. "), "planning"
 
@@ -182,7 +183,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     return _cancel_plan(db, user)
                 elif answer.choice == "question":
                     reply = llm.generate(_PRODUCT_FAQ + text)
-                    return TextReply(f"{reply}\n\nManda mais exercícios, ou me diga se quer salvar ou cancelar."), "planning"
+                    return draft_menu(db, user, draft, reply), "planning"
 
             new_items = _parse_exercises(text)
             if new_items:
