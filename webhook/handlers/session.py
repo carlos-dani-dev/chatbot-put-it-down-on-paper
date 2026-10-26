@@ -21,7 +21,8 @@ from ._shared import (
     missing_weight,
     invalid_set_values,
     too_many_sets,
-    _PRODUCT_FAQ,
+    product_faq_prompt,
+    _recent_history,
 )
 from ..config import get_llm_client, get_decider_client
 from ..repos import exercise_repo, plan_repo, session_repo
@@ -53,6 +54,7 @@ _SESSION_PROMPT = (
     "Você interpreta mensagens de um usuário registrando séries numa academia.\n"
     "Exercícios do treino de hoje: {plan_exercises}.\n"
     "Exercício atual: {current}.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Regras:\n"
     "- Se a mensagem citar um exercício da lista de hoje, devolva exatamente o nome da lista.\n"
     "- Se citar outro exercício, devolva o nome como foi escrito.\n"
@@ -127,7 +129,7 @@ def handle_session(db, user, text=None, button_id=None):
         elif answer.choice == "edit_last":
             return _edit_last(db, user, ws)
         elif answer.choice == "question":
-            reply = llm.generate(_PRODUCT_FAQ + text)
+            reply = llm.generate(product_faq_prompt(db, user, text))
             return ask_for_sets(db, user, reply), "session"
 
     return log_from_message(db, user, ws, text), "session"
@@ -175,6 +177,7 @@ def log_from_message(db: Any, user, ws: WorkoutSession, text: str) -> TextReply:
         prompt = _SESSION_PROMPT.format(
             plan_exercises=", ".join(plan_names) or "nenhum (treino livre)",
             current=current or "nenhum",
+            history=_recent_history(db, user),
             text=text,
         )
         result = llm.generate(prompt, schema=ParsedSessionMessage)

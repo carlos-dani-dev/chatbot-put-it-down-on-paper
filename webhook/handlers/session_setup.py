@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply
 
-from ._shared import enter_idle, plan_picker, _PRODUCT_FAQ
+from ._shared import enter_idle, plan_picker, product_faq_prompt
 from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo, session_repo
 from .planning import handle_planning
@@ -72,7 +72,7 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
             elif answer.choice == "back":
                 return enter_idle(db, user)
             elif answer.choice == "question":
-                reply = llm.generate(_PRODUCT_FAQ + text)
+                reply = llm.generate(product_faq_prompt(db, user, text))
                 return plan_picker(plan_repo.list_active_plans(db, user, limit=8), f"{reply}\n\n"), "session_setup"
 
         return plan_picker(

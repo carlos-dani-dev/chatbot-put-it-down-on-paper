@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 
-from ._shared import enter_planning, enter_session_setup, idle_menu, _PRODUCT_FAQ
+from ._shared import enter_planning, enter_session_setup, idle_menu, product_faq_prompt
 from ..config import get_llm_client, get_decider_client
 from .planning import handle_planning
 from .session_setup import handle_session_setup
@@ -43,7 +43,7 @@ def handle_idle(db: Any | None, user: User, text: str | None = None, button_id: 
                 user.state_data = {"step": "choosing_plan"}
                 return handle_session_setup(db, user, text, button_id)
             elif answer.choice == "question":
-                reply = llm.generate(_PRODUCT_FAQ + text)
+                reply = llm.generate(product_faq_prompt(db, user, text))
                 return idle_menu(db, user, reply), "idle"
 
     return idle_menu(db, user), "idle"

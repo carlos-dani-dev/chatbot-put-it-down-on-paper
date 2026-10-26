@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 
-from ._shared import enter_idle, _PRODUCT_FAQ
+from ._shared import enter_idle, product_faq_prompt
 from ..config import get_llm_client, get_decider_client
 
 decider = get_decider_client()
@@ -74,9 +74,9 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
         elif answer.choice == "question":
 
             next_state = "onboarding"
-            reply = llm.generate(_PRODUCT_FAQ + text)
+            reply = llm.generate(product_faq_prompt(db, user, text))
 
-            return ButtonsReply(f"{reply}\n\nEaí, vamos começar?"), next_state
+            return TextReply(f"{reply}\n\nEaí, vamos começar?"), next_state
 
     reply = ("Não entendi. Por favor, Pode repetir?")
     return TextReply(reply), "onboarding"

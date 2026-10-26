@@ -18,7 +18,8 @@ from ._shared import (
     plan_saved,
     plan_canceled,
     plan_deleted,
-    _PRODUCT_FAQ,
+    product_faq_prompt,
+    _recent_history,
 )
 from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo
@@ -72,6 +73,7 @@ _EXERCISES_PROMPT = (
     "pra adicionar a um plano de treino. Extraia cada exercício mencionado e a "
     "quantidade de séries (sets) planejadas pra ele. Não existe meta de repetições, "
     "apenas de séries — ignore qualquer número de repetições mencionado.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Mensagem: {text}"
 )
 
@@ -81,17 +83,20 @@ _PLAN_PROMPT = (
     "'Treino') e os exercícios mencionados, cada um com a quantidade de séries "
     "(sets) planejadas. Não existe meta de repetições, apenas de séries — ignore "
     "qualquer número de repetições mencionado.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Mensagem: {text}"
 )
 
-def _parse_exercises(text: str) -> list[dict]:
-    result = llm.generate(_EXERCISES_PROMPT.format(text=text), schema=ParsedExercises)
+def _parse_exercises(db: Any, user: User, text: str) -> list[dict]:
+    prompt = _EXERCISES_PROMPT.format(history=_recent_history(db, user), text=text)
+    result = llm.generate(prompt, schema=ParsedExercises)
     parsed = ParsedExercises.model_validate_json(result)
     return [item.model_dump() for item in parsed.items]
 
 
-def _parse_plan(text: str) -> tuple[str, list[dict]]:
-    result = llm.generate(_PLAN_PROMPT.format(text=text), schema=ParsedPlan)
+def _parse_plan(db: Any, user: User, text: str) -> tuple[str, list[dict]]:
+    prompt = _PLAN_PROMPT.format(history=_recent_history(db, user), text=text)
+    result = llm.generate(prompt, schema=ParsedPlan)
     parsed = ParsedPlan.model_validate_json(result)
     return parsed.name, [item.model_dump() for item in parsed.items]
 
@@ -136,7 +141,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "question":
-                reply = llm.generate(_PRODUCT_FAQ + text)
+                reply = llm.generate(product_faq_prompt(db, user, text))
                 return enter_planning(db, user, reply)
             elif answer.choice == "start":
                 return enter_planning(db, user)
@@ -169,7 +174,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             elif answer.choice == "cancel":
                 return _cancel_plan(db, user)
 
-        plan_name, items = _parse_plan(text)
+        plan_name, items = _parse_plan(db, user, text)
 
         if not items:
             return no_exercises_identified(db, user), "planning"
@@ -253,10 +258,10 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 elif answer.choice == "cancel":
                     return _cancel_plan(db, user)
                 elif answer.choice == "question":
-                    reply = llm.generate(_PRODUCT_FAQ + text)
+                    reply = llm.generate(product_faq_prompt(db, user, text))
                     return draft_menu(db, user, draft, reply), "planning"
 
-            new_items = _parse_exercises(text)
+            new_items = _parse_exercises(db, user, text)
             if new_items:
                 draft = {**draft, "items": draft["items"] + new_items}
                 user.state_data = {"step": "building", "draft": draft}

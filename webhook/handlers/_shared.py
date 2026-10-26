@@ -384,8 +384,13 @@ _PRODUCT_FAQ = (
     "- Um modelo de IA interpreta o que foi digitado (exercício, peso, reps).\n"
     "- Dá pra criar plano de treino com antecedência ou treinar livre.\n"
     "- O progresso fica salvo automaticamente, comparado com a meta do plano.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Pergunta do usuário: "
 )
+
+
+def product_faq_prompt(db: Any, user: User, text: str) -> str:
+    return _PRODUCT_FAQ.format(history=_recent_history(db, user)) + text
 
 _IDLE_MENU_PROMPT = (
     "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está de volta "
