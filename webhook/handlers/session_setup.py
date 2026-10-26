@@ -6,6 +6,7 @@ from ..schemas.replies import TextReply
 from ._shared import enter_idle, plan_picker, _PRODUCT_FAQ
 from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo, session_repo
+from .planning import handle_planning
 
 llm = get_llm_client()
 decider = get_decider_client()
@@ -19,6 +20,7 @@ _SESSION_SETUP_INSTRUCTIONS = (
 _SESSION_SETUP_CRITERIA = {
     "free": "Quer treinar livre, sem seguir um plano",
     "start": "Quer começar um treino agora, mas não disse se é livre ou com plano salvo",
+    "planning": "Quer fazer algo com planos de treino: ver os salvos, excluir um, ou adicionar exercícios a um plano (inclusive o que está escolhendo agora)",
     "back": "Quer voltar, desistir de iniciar um treino agora",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
@@ -64,6 +66,9 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
                 return _start_free(db, user)
             elif answer.choice == "start":
                 return plan_picker(plan_repo.list_active_plans(db, user, limit=8)), "session_setup"
+            elif answer.choice == "planning":
+                user.state_data = {"step": "awaiting_plan"}
+                return handle_planning(db, user, text, button_id)
             elif answer.choice == "back":
                 return enter_idle(db, user)
             elif answer.choice == "question":

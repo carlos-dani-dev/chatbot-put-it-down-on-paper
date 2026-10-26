@@ -172,6 +172,50 @@ _PLAN_DELETED_PROMPT = (
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
 )
 
+_PLAN_EXERCISES_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está numa sessão "
+    "de treino ativa e quer ver quais exercícios fazem parte do plano de hoje.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano: {name}\n"
+    "Exercícios do plano, com o progresso de séries já feitas (feito/meta): {items}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental listar, numa única linha, todos os exercícios acima com o progresso "
+    "de cada um.\n"
+    "- Lembre que ele pode continuar registrando as séries.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_FREE_SESSION_NO_PLAN_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está numa sessão "
+    "de treino livre (sem plano salvo) e perguntou quais exercícios fazem parte do treino "
+    "de hoje — mas um treino livre não tem uma lista fixa de exercícios.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Explique que é um treino livre, sem lista fixa de exercícios.\n"
+    "- Incentive ele a continuar registrando os exercícios que for fazendo.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_PLANNING_BLOCKED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está numa sessão "
+    "de treino ativa, mas pediu algo relacionado a planos de treino (ver, excluir ou editar "
+    "um plano) — isso só pode ser feito fora de uma sessão de treino.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Explique que pra mexer nos planos ele precisa encerrar a sessão de treino atual primeiro.\n"
+    "- É fundamental mencionar o comando /cancelar para encerrar a sessão.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
 _PRODUCT_FAQ = (
     "Você é o assistente do chatbot de treino no WhatsApp. O usuário fez uma "
     "pergunta sobre o produto. Responda breve e amigável, usando só estas "
@@ -268,7 +312,7 @@ def delete_plan_menu(db: Any, user: User, plans, note: str = "") -> TextReply:
     prompt = _DELETE_PLAN_MENU_PROMPT.format(
         history=_recent_history(db, user),
         plans=", ".join(p.name for p in plans),
-        #intro=f"{note}\n\n" if note else "",
+        intro=f"{note}\n\n" if note else "",
     )
     return TextReply(_generate(prompt))
 
@@ -317,4 +361,26 @@ def plan_canceled(db: Any, user: User) -> TextReply:
 def plan_deleted(db: Any, user: User, plan_name: str) -> TextReply:
 
     prompt = _PLAN_DELETED_PROMPT.format(history=_recent_history(db, user), name=plan_name)
+    return TextReply(_generate(prompt))
+
+
+def plan_exercises_menu(db: Any, user: User, name: str, items: str) -> TextReply:
+
+    prompt = _PLAN_EXERCISES_PROMPT.format(
+        history=_recent_history(db, user),
+        name=name,
+        items=items,
+    )
+    return TextReply(_generate(prompt))
+
+
+def free_session_no_plan(db: Any, user: User) -> TextReply:
+
+    prompt = _FREE_SESSION_NO_PLAN_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def planning_blocked_in_session(db: Any, user: User) -> TextReply:
+
+    prompt = _PLANNING_BLOCKED_PROMPT.format(history=_recent_history(db, user))
     return TextReply(_generate(prompt))

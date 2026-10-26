@@ -6,7 +6,14 @@ from ..models import PlanExercise, Exercise, WorkoutSession
 from ..schemas.replies import TextReply, ButtonsReply
 from ..schemas.llm_response import ParsedSessionMessage
 
-from ._shared import enter_idle, idle_menu, _PRODUCT_FAQ
+from ._shared import (
+    enter_idle,
+    idle_menu,
+    plan_exercises_menu,
+    free_session_no_plan,
+    planning_blocked_in_session,
+    _PRODUCT_FAQ,
+)
 from ..config import get_llm_client, get_decider_client
 from ..repos import exercise_repo, plan_repo, session_repo
 
@@ -17,13 +24,16 @@ MAX_SETS_PER_MESSAGE = 20
 
 _SESSION_INSTRUCTIONS = (
     "O usuário está numa sessão de treino ativa e pode estar registrando uma "
-    "série (exercício, peso, repetições), querendo encerrar o treino, "
-    "querendo corrigir a última série registrada, ou tirando uma dúvida "
-    "sobre como o app funciona."
+    "série (exercício, peso, repetições), querendo ver a lista de exercícios "
+    "do plano de hoje, querendo mexer nos planos de treino salvos, querendo "
+    "encerrar o treino, querendo corrigir a última série registrada, ou "
+    "tirando uma dúvida sobre como o app funciona."
 )
 
 _SESSION_CRITERIA = {
     "log_sets": "Está relatando uma ou mais séries: exercício, peso e repetições",
+    "list_exercises": "Quer ver quais exercícios fazem parte do treino de hoje",
+    "planning": "Quer fazer algo com planos de treino: ver os salvos, excluir um, ou adicionar exercícios a um plano (inclusive o que está usando agora)",
     "finish": "Quer encerrar o treino de hoje",
     "edit_last": "Quer corrigir ou desfazer a última série registrada",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
@@ -62,6 +72,18 @@ def _finish(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
     return enter_idle(db, user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
 
 
+def _list_exercises(db: Any, user, ws: WorkoutSession) -> TextReply:
+    if ws.plan_id is None:
+        return free_session_no_plan(db, user)
+
+    plan = plan_repo.get_user_plan(db, user, ws.plan_id)
+    items = ", ".join(
+        f"{ex.name} ({session_repo.count_sets(db, ws.id, ex.id)}/{pe.target_sets}x)"
+        for pe, ex in plan_repo.get_plan_exercises(db, ws.plan_id)
+    )
+    return plan_exercises_menu(db, user, plan.name if plan else "Treino", items)
+
+
 def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
     removed = session_repo.undo_last_set(db, ws)
     if removed is None:
@@ -91,6 +113,10 @@ def handle_session(db, user, text=None, button_id=None):
     if (answer.confidence or 0) >= 0.6:
         if answer.choice == "finish":
             return _finish(db, user, ws)
+        elif answer.choice == "list_exercises":
+            return _list_exercises(db, user, ws), "session"
+        elif answer.choice == "planning":
+            return planning_blocked_in_session(db, user), "session"
         elif answer.choice == "edit_last":
             return _edit_last(db, ws)
         elif answer.choice == "question":
