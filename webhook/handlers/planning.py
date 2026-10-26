@@ -9,6 +9,8 @@ from ._shared import (
     enter_planning,
     list_plans_menu,
     no_plans_saved,
+    list_exercises_menu,
+    plan_exercise_list,
     delete_plan_menu,
     no_plans_to_delete,
     no_exercises_identified,
@@ -26,19 +28,26 @@ decider = get_decider_client()
 
 _AWAITING_PLAN_INSTRUCTIONS = (
     "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
-    "quer ver os planos que já tem salvos, quer excluir um plano salvo, quer "
-    "desistir de planejar, ou pode estar tirando uma dúvida sobre como o app funciona."
+    "quer ver os planos que já tem salvos, quer ver os exercícios de um plano "
+    "salvo, quer excluir um plano salvo, quer desistir de planejar, ou pode "
+    "estar tirando uma dúvida sobre como o app funciona."
 )
 
 _AWAITING_PLAN_CRITERIA = {
     "create_plan": "Está descrevendo um plano de treino, com exercícios",
     "start": "Só confirmou que quer planejar um treino novo, sem citar nome ou exercícios ainda",
     "list_plans": "Quer ver quais planos de treino já tem salvos",
+    "list_exercises": "Quer ver quais exercícios tem um dos planos de treino já salvos",
     "delete_plan": "Quer excluir um plano de treino já salvo",
     "cancel": "Quer desistir, abortar, parar ou cancelar o planejamento desse treino",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }
+
+_LIST_EXERCISES_INSTRUCTIONS = (
+    "O usuário está escolhendo de qual plano de treino salvo ele quer ver os "
+    "exercícios, dizendo o nome do plano, ou pode estar mudando de ideia."
+)
 
 _DELETE_PLAN_INSTRUCTIONS = (
     "O usuário está escolhendo qual plano de treino salvo ele quer excluir, "
@@ -119,6 +128,12 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 if not plans:
                     return no_plans_saved(db, user), "planning"
                 return list_plans_menu(db, user, plans), "planning"
+            elif answer.choice == "list_exercises":
+                plans = plan_repo.list_active_plans(db, user, limit=8)
+                if not plans:
+                    return no_plans_saved(db, user), "planning"
+                user.state_data = {"step": "listing_exercises"}
+                return list_exercises_menu(db, user, plans), "planning"
             elif answer.choice == "delete_plan":
                 plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
@@ -163,6 +178,37 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     return enter_idle(db, user, plan_deleted(db, user, plan.name))
 
         return delete_plan_menu(db, user, plans), "planning"
+
+    elif step == "listing_exercises":
+
+        plans = plan_repo.list_active_plans(db, user, limit=8)
+        if not plans:
+            return enter_idle(db, user)
+
+        criteria = {f"plan:{p.id}": p.name for p in plans}
+        criteria["none"] = "Mudou de ideia, não quer ver os exercícios de nenhum plano"
+
+        answer = decider.choose(
+            state=(text or "").lower(),
+            instructions=_LIST_EXERCISES_INSTRUCTIONS,
+            criteria=criteria,
+        )
+
+        if (answer.confidence or 0) >= 0.6:
+            if answer.choice == "none":
+                return enter_idle(db, user)
+            if answer.choice.startswith("plan:"):
+                plan_id = int(answer.choice.split(":", 1)[1])
+                plan = plan_repo.get_user_plan(db, user, plan_id)
+                if plan is not None:
+                    items = ", ".join(
+                        f"{ex.name} ({pe.target_sets}x)"
+                        for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
+                    )
+                    user.state_data = {"step": "awaiting_plan"}
+                    return plan_exercise_list(db, user, plan.name, items), "planning"
+
+        return list_exercises_menu(db, user, plans, "🤔 Não entendi. "), "planning"
 
     elif step == "building":
 

@@ -19,7 +19,7 @@ _IDLE_INSTRUCTIONS = (
 )
 
 _IDLE_CRITERIA = {
-    "planning": "Quer fazer algo com planos de treino: criar um novo, ver os que já tem salvos, ou excluir um",
+    "planning": "Quer fazer algo com planos de treino: criar um novo, ver os que já tem salvos, ver os exercícios de um plano cadastrado, ou excluir um",
     "session": "Quer começar, continuar ou registrar algo de um treino agora: seguir um plano salvo, treinar livre, ou relatar uma série/exercício",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",

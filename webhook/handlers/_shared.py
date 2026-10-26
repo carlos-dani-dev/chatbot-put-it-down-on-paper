@@ -67,6 +67,39 @@ _NO_PLANS_SAVED_PROMPT = (
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
 )
 
+_LIST_EXERCISES_MENU_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer ver os "
+    "exercícios de um dos planos de treino salvos.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Planos de treino salvos, que ele pode escolher: {plans}\n\n"
+    "{intro}"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental listar os nomes de TODOS os planos salvos acima, numa única linha, "
+    "separados por vírgula.\n"
+    "- Peça pra ele dizer o nome exato de um dos planos listados.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_PLAN_EXERCISE_LIST_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário pediu pra ver "
+    "os exercícios de um plano de treino salvo (fora de uma sessão de treino).\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano: {name}\n"
+    "Exercícios do plano (nome e quantidade de séries planejadas): {items}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental listar, numa única linha, todos os exercícios acima com a "
+    "quantidade de séries de cada um.\n"
+    "- Pergunte se ele quer fazer mais alguma coisa com os planos (criar um novo, ver "
+    "outro plano, ou excluir um).\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
 _DELETE_PLAN_MENU_PROMPT = (
     "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer excluir "
     "um plano de treino salvo.\n\n"
@@ -431,6 +464,26 @@ def list_plans_menu(db: Any, user: User, plans) -> TextReply:
 def no_plans_saved(db: Any, user: User) -> TextReply:
 
     prompt = _NO_PLANS_SAVED_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def list_exercises_menu(db: Any, user: User, plans, note: str = "") -> TextReply:
+
+    prompt = _LIST_EXERCISES_MENU_PROMPT.format(
+        history=_recent_history(db, user),
+        plans=", ".join(p.name for p in plans),
+        intro=f"{note}\n\n" if note else "",
+    )
+    return TextReply(_generate(prompt))
+
+
+def plan_exercise_list(db: Any, user: User, name: str, items: str) -> TextReply:
+
+    prompt = _PLAN_EXERCISE_LIST_PROMPT.format(
+        history=_recent_history(db, user),
+        name=name,
+        items=items,
+    )
     return TextReply(_generate(prompt))
 
 
