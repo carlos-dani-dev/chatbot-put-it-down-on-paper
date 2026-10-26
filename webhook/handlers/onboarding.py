@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 
-from ._shared import enter_idle, product_faq_prompt
+from ._shared import enter_idle, product_faq_prompt, with_history
 from ..config import get_llm_client, get_decider_client
 
 decider = get_decider_client()
@@ -53,7 +53,7 @@ def handle_onboarding(db: Any | None, user: User, text: str | None = None, butto
             return enter_idle(db, user)
         
     answer = decider.choose(
-        state=(text or "").lower(),
+        state=with_history(db, user, text),
         instructions=_AWAITING_USER_ONBOARDING_REPLY_INSTRUCTIONS,
         criteria=_AWAITING_USER_ONBOARDING_REPLY_CRITERIA,
     )

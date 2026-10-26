@@ -14,6 +14,10 @@ def _recent_history(db: Any, user: User, limit: int = 2) -> str:
     return "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
 
 
+def with_history(db: Any, user: User, text: str | None) -> str:
+    return f"{_recent_history(db, user)}\nuser: {text or ''}".lower()
+
+
 def _fix_whatsapp_bold(text: str) -> str:
     text = text.replace("**", "*")
     return re.sub(r"\*([^*\n]+)\*", lambda m: f"*{m.group(1).strip()}*", text)

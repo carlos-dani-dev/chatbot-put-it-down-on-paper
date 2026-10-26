@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply
 
-from ._shared import enter_idle, plan_picker, product_faq_prompt
+from ._shared import enter_idle, plan_picker, product_faq_prompt, with_history
 from ..config import get_llm_client, get_decider_client
 from ..repos import plan_repo, session_repo
 from .planning import handle_planning
@@ -56,7 +56,7 @@ def handle_session_setup(db: Any | None, user: User, text: str | None = None, bu
 
     if text:
         answer = decider.choose(
-            state=text.lower(),
+            state=with_history(db, user, text),
             instructions=_SESSION_SETUP_INSTRUCTIONS,
             criteria=_SESSION_SETUP_CRITERIA,
         )

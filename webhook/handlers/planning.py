@@ -21,6 +21,7 @@ from ._shared import (
     plan_deleted,
     building_blocked_for_session,
     product_faq_prompt,
+    with_history,
     _recent_history,
 )
 from ..config import get_llm_client, get_decider_client
@@ -112,7 +113,7 @@ def _match_named_plan(db: Any, user: User, text: str | None, plans):
     criteria["none"] = "Não citou nenhum plano específico pelo nome"
 
     answer = decider.choose(
-        state=(text or "").lower(),
+        state=with_history(db, user, text),
         instructions=_LIST_EXERCISES_INSTRUCTIONS,
         criteria=criteria,
     )
@@ -140,7 +141,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
     if step == "awaiting_plan":
 
         answer = decider.choose(
-            state=(text or "").lower(),
+            state=with_history(db, user, text),
             instructions=_AWAITING_PLAN_INSTRUCTIONS,
             criteria=_AWAITING_PLAN_CRITERIA,
         )
@@ -201,7 +202,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         criteria["none"] = "Mudou de ideia, não quer excluir nenhum plano"
 
         answer = decider.choose(
-            state=(text or "").lower(),
+            state=with_history(db, user, text),
             instructions=_DELETE_PLAN_INSTRUCTIONS,
             criteria=criteria,
         )
@@ -228,7 +229,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         criteria["none"] = "Mudou de ideia, não quer ver os exercícios de nenhum plano"
 
         answer = decider.choose(
-            state=(text or "").lower(),
+            state=with_history(db, user, text),
             instructions=_LIST_EXERCISES_INSTRUCTIONS,
             criteria=criteria,
         )
@@ -254,7 +255,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
         if text:
             answer = decider.choose(
-                state=text.lower(),
+                state=with_history(db, user, text),
                 instructions=_BUILDING_INSTRUCTIONS,
                 criteria=_BUILDING_CRITERIA,
             )

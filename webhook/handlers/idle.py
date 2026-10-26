@@ -3,7 +3,7 @@ from typing import Any
 from ..models import User
 from ..schemas.replies import TextReply, ButtonsReply
 
-from ._shared import enter_planning, enter_session_setup, idle_menu, product_faq_prompt
+from ._shared import enter_planning, enter_session_setup, idle_menu, product_faq_prompt, with_history
 from ..config import get_llm_client, get_decider_client
 from .planning import handle_planning
 from .session_setup import handle_session_setup
@@ -30,7 +30,7 @@ def handle_idle(db: Any | None, user: User, text: str | None = None, button_id: 
 
     if text:
         answer = decider.choose(
-            state=text.lower(),
+            state=with_history(db, user, text),
             instructions=_IDLE_INSTRUCTIONS,
             criteria=_IDLE_CRITERIA,
         )

@@ -22,6 +22,7 @@ from ._shared import (
     invalid_set_values,
     too_many_sets,
     product_faq_prompt,
+    with_history,
     _recent_history,
 )
 from ..config import get_llm_client, get_decider_client
@@ -114,7 +115,7 @@ def handle_session(db, user, text=None, button_id=None):
         return ask_for_sets(db, user), "session"
 
     answer = decider.choose(
-        state=text.lower(),
+        state=with_history(db, user, text),
         instructions=_SESSION_INSTRUCTIONS,
         criteria=_SESSION_CRITERIA,
     )

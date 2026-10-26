@@ -5,7 +5,7 @@ from ..models import User
 from ..schemas.replies import TextReply
 from ..config import get_decider_client
 from ..repos import plan_repo, session_repo
-from ._shared import enter_idle
+from ._shared import enter_idle, with_history
 
 decider = get_decider_client()
 
@@ -53,7 +53,7 @@ def handle_resume_check(db: Any, user: User, text: str | None, gap) -> tuple[Tex
 
     if user.state_data.get("resume_check"):
         answer = decider.choose(
-            state=(text or "").lower(),
+            state=with_history(db, user, text),
             instructions=_RESUME_INSTRUCTIONS,
             criteria=_RESUME_CRITERIA,
         )
