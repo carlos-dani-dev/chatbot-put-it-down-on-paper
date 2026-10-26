@@ -26,8 +26,8 @@ decider = get_decider_client()
 
 _AWAITING_PLAN_INSTRUCTIONS = (
     "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
-    "quer ver os planos que já tem salvos, quer excluir um plano salvo, "
-    "ou pode estar tirando uma dúvida sobre como o app funciona."
+    "quer ver os planos que já tem salvos, quer excluir um plano salvo, quer "
+    "desistir de planejar, ou pode estar tirando uma dúvida sobre como o app funciona."
 )
 
 _AWAITING_PLAN_CRITERIA = {
@@ -35,6 +35,7 @@ _AWAITING_PLAN_CRITERIA = {
     "start": "Só confirmou que quer planejar um treino novo, sem citar nome ou exercícios ainda",
     "list_plans": "Quer ver quais planos de treino já tem salvos",
     "delete_plan": "Quer excluir um plano de treino já salvo",
+    "cancel": "Quer desistir, abortar, parar ou cancelar o planejamento desse treino",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }
@@ -52,7 +53,7 @@ _BUILDING_INSTRUCTIONS = (
 _BUILDING_CRITERIA = {
     "add_exercises": "Está citando mais exercícios pra incluir no plano",
     "save": "Quer salvar o plano do jeito que está",
-    "cancel": "Quer cancelar, descartar o plano que estava montando",
+    "cancel": "Quer desistir, abortar, parar, cancelar ou descartar o plano que estava montando",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não é possível identificar exercício nenhum na mensagem",
 }
@@ -124,6 +125,8 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     return no_plans_to_delete(db, user), "planning"
                 user.state_data = {"step": "deleting_plan"}
                 return delete_plan_menu(db, user, plans), "planning"
+            elif answer.choice == "cancel":
+                return _cancel_plan(db, user)
 
         plan_name, items = _parse_plan(text)
 

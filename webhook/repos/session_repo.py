@@ -35,11 +35,6 @@ def close_session(db: Any, ws: WorkoutSession) -> int:
     return count_sets(db, ws.id)
 
 
-def cancel_session(db: Any, ws: WorkoutSession) -> None:
-    """Apaga a sessão e, em cascata, todas as séries registradas nela."""
-    db.delete(ws)
-
-
 def get_last_set(db: Any, session_id: int) -> WorkoutSet | None:
     return db.scalar(
         select(WorkoutSet)

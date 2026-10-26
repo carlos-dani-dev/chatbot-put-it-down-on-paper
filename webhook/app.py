@@ -69,7 +69,7 @@ def _process(from_number: str, text: str, button_id: str | None = None, message_
 
         intercept_result = None
         if button_id is None:
-            intercept_result = handle_universal_command(db, user, text)
+            intercept_result = handle_universal_command(user, text)
             if intercept_result is None:
                 intercept_result = handle_resume_check(db, user, text, gap)
 

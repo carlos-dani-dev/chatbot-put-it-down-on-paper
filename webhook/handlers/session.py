@@ -12,6 +12,15 @@ from ._shared import (
     plan_exercises_menu,
     free_session_no_plan,
     planning_blocked_in_session,
+    session_finished,
+    no_set_to_undo,
+    set_undone,
+    ask_for_sets,
+    session_message_error,
+    which_exercise,
+    missing_weight,
+    invalid_set_values,
+    too_many_sets,
     _PRODUCT_FAQ,
 )
 from ..config import get_llm_client, get_decider_client
@@ -69,7 +78,7 @@ def _fmt_set(weight: float, reps: int) -> str:
 
 def _finish(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
     n = session_repo.close_session(db, ws)
-    return enter_idle(db, user, TextReply(f"🎉 Treino finalizado!\n{n} séries registradas.\n\nMandou muito bem, te vejo no próximo treino!"))
+    return enter_idle(db, user, session_finished(db, user, n))
 
 
 def _list_exercises(db: Any, user, ws: WorkoutSession) -> TextReply:
@@ -84,16 +93,14 @@ def _list_exercises(db: Any, user, ws: WorkoutSession) -> TextReply:
     return plan_exercises_menu(db, user, plan.name if plan else "Treino", items)
 
 
-def _edit_last(db, ws: WorkoutSession) -> tuple[TextReply, str]:
+def _edit_last(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
     removed = session_repo.undo_last_set(db, ws)
     if removed is None:
-        return TextReply("🤔 Não tem nenhuma série registrada pra remover ainda."), "session"
+        return no_set_to_undo(db, user), "session"
 
     ex = db.get(Exercise, removed.exercise_id)
-    return TextReply(
-        f"↩️ Removi a última série de *{ex.name}* ({_fmt_set(float(removed.weight_kg), removed.reps)}).\n\n"
-        "Você já pode mandar de novo, mas agora com os valores certos."
-    ), "session"
+    set_detail = _fmt_set(float(removed.weight_kg), removed.reps)
+    return set_undone(db, user, ex.name, set_detail), "session"
 
 
 def handle_session(db, user, text=None, button_id=None):
@@ -102,7 +109,7 @@ def handle_session(db, user, text=None, button_id=None):
         return enter_idle(db, user, idle_menu(db, user, "🤔 Não achei um treino em andamento."))
 
     if button_id or not text: # botão antigo ou mídia
-        return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
+        return ask_for_sets(db, user), "session"
 
     answer = decider.choose(
         state=text.lower(),
@@ -118,15 +125,15 @@ def handle_session(db, user, text=None, button_id=None):
         elif answer.choice == "planning":
             return planning_blocked_in_session(db, user), "session"
         elif answer.choice == "edit_last":
-            return _edit_last(db, ws)
+            return _edit_last(db, user, ws)
         elif answer.choice == "question":
             reply = llm.generate(_PRODUCT_FAQ + text)
-            return TextReply(f"{reply}\n\nMe manda as séries quando quiser continuar."), "session"
+            return ask_for_sets(db, user, reply), "session"
 
-    return log_from_message(db, ws, text), "session"
+    return log_from_message(db, user, ws, text), "session"
 
 
-def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | ButtonsReply:
+def log_from_message(db: Any, user, ws: WorkoutSession, text: str) -> TextReply:
 
     def _norm(s: str) -> str:
         s = unicodedata.normalize("NFKD", s)
@@ -181,18 +188,18 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
             text, [ex.name for _, ex in plan_idx.values()], current.name if current else None
         )
     except Exception:                                    # timeout, erro de API, JSON inválido
-        return TextReply("🤔 Tive um problema pra entender a mensagem. Pode mandar de novo?")
+        return session_message_error(db, user)
 
     if parsed.intent != "log_sets" or not parsed.entries:
-        return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*")
- 
+        return ask_for_sets(db, user)
+
     # passo 1: resolver e validar TUDO, sem gravar nada
     prepared: list[tuple[_Target, list[tuple[float, int, int | None]]]] = []
     total = 0
     for entry in parsed.entries:
         target = _resolve(plan_idx, entry.exercise)
         if target is None:
-            return TextReply("🤔 Qual exercício? Me manda o nome junto, ex.: *supino 80kg 8 reps*")
+            return which_exercise(db, user)
 
         weight = session_repo.get_last_weight(db, ws.id, target.exercise.id) if target.exercise else None
         sets = []
@@ -200,15 +207,9 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
             if s.weight_kg is not None:
                 weight = s.weight_kg
             if weight is None:
-                return TextReply(
-                    f"🤔 Qual a carga no *{target.name}*? Manda de novo com o peso, "
-                    f"ex.: *{target.name} 80kg {s.reps} reps*"
-                )
+                return missing_weight(db, user, target.name, s.reps)
             if not (0 <= weight <= 500 and 1 <= s.reps <= 100):
-                return TextReply(
-                    "Esses valores parecem errados 🤔 (carga de 0 a 500 kg, de 1 a 100 repetições). "
-                    "Não registrei nada, manda de novo?"
-                )
+                return invalid_set_values(db, user)
             rest = s.rest_seconds if s.rest_seconds is not None and 0 <= s.rest_seconds <= 3600 else None
             sets.append((weight, s.reps, rest))
  
@@ -217,7 +218,7 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
             prepared.append((target, sets))
  
     if not prepared or total > MAX_SETS_PER_MESSAGE:
-        return TextReply("🤔 Não consegui registrar. Manda poucas séries por vez, ex.: *supino 80kg 8 reps*")
+        return too_many_sets(db, user)
  
     # passo 2: gravar
     lines = []
@@ -242,4 +243,4 @@ def log_from_message(db: Any, ws: WorkoutSession, text: str) -> TextReply | Butt
         detail = ", ".join(_fmt_set(w, r) for w, r, _ in sets)
         lines.append(f"✅ *{ex.name}*: {label} ({detail})\n{tail}")
  
-    return ButtonsReply("\n\n".join(lines), [("finish", "Finalizar treino"), ("edit", "Editar série")])
+    return TextReply("\n\n".join(lines))

@@ -210,7 +210,134 @@ _PLANNING_BLOCKED_PROMPT = (
     "Escreva a próxima mensagem do bot, respeitando:\n"
     "- Seja sucinto e direto ao ponto, sem enrolação.\n"
     "- Explique que pra mexer nos planos ele precisa encerrar a sessão de treino atual primeiro.\n"
-    "- É fundamental mencionar o comando /cancelar para encerrar a sessão.\n"
+    "- É fundamental dizer que ele pode encerrar dizendo que quer *finalizar* o treino.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_SESSION_FINISHED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário acabou de "
+    "finalizar a sessão de treino de hoje.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Séries registradas na sessão: {n_sets}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental parabenizar o usuário e citar quantas séries ele registrou.\n"
+    "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
+    "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_NO_SET_TO_UNDO_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário pediu pra "
+    "corrigir ou desfazer a última série registrada, mas ainda não existe nenhuma "
+    "série registrada nessa sessão de treino.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental avisar que não há nenhuma série registrada ainda pra remover.\n"
+    "- Incentive ele a mandar a primeira série do treino.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_SET_UNDONE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário pediu pra "
+    "corrigir a última série registrada, e ela acabou de ser removida.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Exercício da série removida: {exercise_name}\n"
+    "Detalhe da série removida: {set_detail}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental confirmar que a série removida foi a do exercício e dos valores acima.\n"
+    "- Incentive ele a mandar de novo, agora com os valores certos.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_ASK_FOR_SETS_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está numa sessão "
+    "de treino ativa e precisa mandar as séries que fez (exercício, peso, repetições).\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "{note}"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental pedir pra ele mandar o exercício, o peso e as repetições, com um "
+    "exemplo curto (ex.: *supino 80kg 8 reps*).\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_SESSION_MESSAGE_ERROR_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. Houve um problema técnico "
+    "ao tentar entender a última mensagem do usuário, numa sessão de treino ativa.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Peça desculpas pelo problema, sem entrar em detalhes técnicos.\n"
+    "- É fundamental pedir pra ele mandar a mensagem de novo.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_WHICH_EXERCISE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário relatou uma "
+    "série numa sessão de treino, mas não deu pra saber qual é o exercício.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental perguntar qual é o exercício, pedindo pra mandar o nome junto com "
+    "o peso e as repetições, com um exemplo curto (ex.: *supino 80kg 8 reps*).\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_MISSING_WEIGHT_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário relatou uma "
+    "série, mas não disse a carga usada.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Exercício: {exercise_name}\n"
+    "Repetições relatadas: {reps}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental perguntar qual foi a carga usada nesse exercício, pedindo pra mandar "
+    "de novo com o peso, citando o nome do exercício e as repetições acima como exemplo.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_INVALID_SET_VALUES_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário relatou uma "
+    "série com valores fora do aceitável (carga ou repetições absurdas), e nada foi "
+    "registrado.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental avisar que os valores parecem errados (carga de 0 a 500 kg, de 1 a "
+    "100 repetições) e que nada foi registrado.\n"
+    "- Peça pra ele mandar de novo com os valores corretos.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_TOO_MANY_SETS_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário mandou muitas "
+    "séries de uma vez, ou nada pôde ser registrado, numa única mensagem.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental avisar que não conseguiu registrar e pedir pra mandar poucas séries "
+    "por vez, com um exemplo curto (ex.: *supino 80kg 8 reps*).\n"
     "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
     "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
@@ -383,4 +510,69 @@ def free_session_no_plan(db: Any, user: User) -> TextReply:
 def planning_blocked_in_session(db: Any, user: User) -> TextReply:
 
     prompt = _PLANNING_BLOCKED_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def session_finished(db: Any, user: User, n_sets: int) -> TextReply:
+
+    prompt = _SESSION_FINISHED_PROMPT.format(history=_recent_history(db, user), n_sets=n_sets)
+    return TextReply(_generate(prompt))
+
+
+def no_set_to_undo(db: Any, user: User) -> TextReply:
+
+    prompt = _NO_SET_TO_UNDO_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def set_undone(db: Any, user: User, exercise_name: str, set_detail: str) -> TextReply:
+
+    prompt = _SET_UNDONE_PROMPT.format(
+        history=_recent_history(db, user),
+        exercise_name=exercise_name,
+        set_detail=set_detail,
+    )
+    return TextReply(_generate(prompt))
+
+
+def ask_for_sets(db: Any, user: User, note: str = "") -> TextReply:
+
+    prompt = _ASK_FOR_SETS_PROMPT.format(
+        history=_recent_history(db, user),
+        note=f"{note}\n\n" if note else "",
+    )
+    return TextReply(_generate(prompt))
+
+
+def session_message_error(db: Any, user: User) -> TextReply:
+
+    prompt = _SESSION_MESSAGE_ERROR_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def which_exercise(db: Any, user: User) -> TextReply:
+
+    prompt = _WHICH_EXERCISE_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def missing_weight(db: Any, user: User, exercise_name: str, reps: int) -> TextReply:
+
+    prompt = _MISSING_WEIGHT_PROMPT.format(
+        history=_recent_history(db, user),
+        exercise_name=exercise_name,
+        reps=reps,
+    )
+    return TextReply(_generate(prompt))
+
+
+def invalid_set_values(db: Any, user: User) -> TextReply:
+
+    prompt = _INVALID_SET_VALUES_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def too_many_sets(db: Any, user: User) -> TextReply:
+
+    prompt = _TOO_MANY_SETS_PROMPT.format(history=_recent_history(db, user))
     return TextReply(_generate(prompt))
