@@ -108,7 +108,18 @@ def _parse_plan(db: Any, user: User, text: str) -> tuple[str, list[dict]]:
     return parsed.name, [item.model_dump() for item in parsed.items]
 
 
+def _show_plan_exercises(db: Any, user: User, plan) -> tuple[TextReply, str]:
+    items = ", ".join(
+        f"{ex.name} ({pe.target_sets}x)"
+        for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
+    )
+    return enter_idle(db, user, plan_exercise_list(db, user, plan.name, items))
+
+
 def _match_named_plan(db: Any, user: User, text: str | None, plans):
+    if len(plans) == 1:
+        return plans[0]
+
     criteria = {f"plan:{p.id}": p.name for p in plans}
     criteria["none"] = "Não citou nenhum plano específico pelo nome"
 
@@ -164,11 +175,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
                 plan = _match_named_plan(db, user, text, plans)
                 if plan is not None:
-                    items = ", ".join(
-                        f"{ex.name} ({pe.target_sets}x)"
-                        for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
-                    )
-                    return enter_idle(db, user, plan_exercise_list(db, user, plan.name, items))
+                    return _show_plan_exercises(db, user, plan)
 
                 user.state_data = {"step": "listing_exercises"}
                 return list_exercises_menu(db, user, plans), "planning"
@@ -225,6 +232,9 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
         if not plans:
             return enter_idle(db, user)
 
+        if len(plans) == 1:
+            return _show_plan_exercises(db, user, plans[0])
+
         criteria = {f"plan:{p.id}": p.name for p in plans}
         criteria["none"] = "Mudou de ideia, não quer ver os exercícios de nenhum plano"
 
@@ -241,11 +251,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 plan_id = int(answer.choice.split(":", 1)[1])
                 plan = plan_repo.get_user_plan(db, user, plan_id)
                 if plan is not None:
-                    items = ", ".join(
-                        f"{ex.name} ({pe.target_sets}x)"
-                        for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
-                    )
-                    return enter_idle(db, user, plan_exercise_list(db, user, plan.name, items))
+                    return _show_plan_exercises(db, user, plan)
 
         return list_exercises_menu(db, user, plans, "🤔 Não entendi. "), "planning"
 
