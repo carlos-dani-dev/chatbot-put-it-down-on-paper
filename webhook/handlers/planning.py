@@ -163,6 +163,8 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
     elif step == "building":
 
+        draft = user.state_data.get("draft")
+
         if text:
             answer = decider.choose(
                 state=text.lower(),
