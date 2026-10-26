@@ -18,6 +18,7 @@ from ._shared import (
     plan_saved,
     plan_canceled,
     plan_deleted,
+    building_blocked_for_session,
     product_faq_prompt,
     _recent_history,
 )
@@ -57,13 +58,15 @@ _DELETE_PLAN_INSTRUCTIONS = (
 
 _BUILDING_INSTRUCTIONS = (
     "O usuário já tem um rascunho de plano de treino e pode estar adicionando "
-    "mais exercícios a ele, ou tirando uma dúvida sobre como o app funciona."
+    "mais exercícios a ele, querendo começar um treino agora (sem falar do "
+    "plano que está montando), ou tirando uma dúvida sobre como o app funciona."
 )
 
 _BUILDING_CRITERIA = {
     "add_exercises": "Está citando mais exercícios pra incluir no plano",
-    "save": "Quer salvar o plano do jeito que está",
+    "save": "Quer salvar o plano do jeito que está (ex.: 'salvar', 'salva', 'pode salvar', 'salve')",
     "cancel": "Quer desistir, abortar, parar, cancelar ou descartar o plano que estava montando",
+    "session": "Quer começar, continuar ou registrar algo de um treino agora, sem falar do plano que está montando",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não é possível identificar exercício nenhum na mensagem",
 }
@@ -257,6 +260,8 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     return _save_plan(db, user, draft)
                 elif answer.choice == "cancel":
                     return _cancel_plan(db, user)
+                elif answer.choice == "session":
+                    return building_blocked_for_session(db, user, draft), "planning"
                 elif answer.choice == "question":
                     reply = llm.generate(product_faq_prompt(db, user, text))
                     return draft_menu(db, user, draft, reply), "planning"

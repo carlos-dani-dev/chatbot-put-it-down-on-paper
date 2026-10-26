@@ -235,6 +235,22 @@ _FREE_SESSION_NO_PLAN_PROMPT = (
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
 )
 
+_BUILDING_BLOCKED_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está montando "
+    "um plano de treino novo, ainda não salvo, mas pediu pra começar ou registrar um "
+    "treino — isso só pode ser feito depois de salvar ou cancelar o plano atual.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Nome do plano que ele está montando: {name}\n"
+    "Exercícios já incluídos (nome e número de séries): {items}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- Explique que ele precisa salvar ou cancelar o plano atual antes de começar um treino.\n"
+    "- É fundamental perguntar se ele quer salvar ou cancelar o plano.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
 _PLANNING_BLOCKED_PROMPT = (
     "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está numa sessão "
     "de treino ativa, mas pediu algo relacionado a planos de treino (ver, excluir ou editar "
@@ -568,6 +584,17 @@ def free_session_no_plan(db: Any, user: User) -> TextReply:
 def planning_blocked_in_session(db: Any, user: User) -> TextReply:
 
     prompt = _PLANNING_BLOCKED_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def building_blocked_for_session(db: Any, user: User, draft: dict) -> TextReply:
+
+    items = ", ".join(f"{item['name']} ({item['target_sets']}x)" for item in draft["items"])
+    prompt = _BUILDING_BLOCKED_PROMPT.format(
+        history=_recent_history(db, user),
+        name=draft["name"],
+        items=items,
+    )
     return TextReply(_generate(prompt))
 
 
