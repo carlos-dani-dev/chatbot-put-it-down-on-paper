@@ -159,15 +159,9 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                     plan_repo.archive_plan(db, plan)
                     return enter_idle(db, user, plan_deleted(db, user, plan.name))
 
-        return delete_plan_menu(db, user, plans, "🤔 Não entendi. "), "planning"
+        return delete_plan_menu(db, user, plans), "planning"
 
     elif step == "building":
-
-        draft = user.state_data.get("draft")
-        if button_id == "plan_save":  # legado, caso alguém ainda toque num botão antigo
-            return _save_plan(db, user, draft)
-        elif button_id == "plan_cancel":
-            return _cancel_plan(db, user)
 
         if text:
             answer = decider.choose(

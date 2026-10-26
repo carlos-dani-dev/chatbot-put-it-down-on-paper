@@ -28,11 +28,6 @@ _IDLE_CRITERIA = {
 
 def handle_idle(db: Any | None, user: User, text: str | None = None, button_id: str | None = None) -> tuple[TextReply | ButtonsReply, str]:
 
-    if button_id == "create_plan":
-        return enter_planning(db, user)
-    if button_id == "start_session":
-        return enter_session_setup(db, user)
-
     if text:
         answer = decider.choose(
             state=text.lower(),

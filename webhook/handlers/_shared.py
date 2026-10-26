@@ -268,7 +268,7 @@ def delete_plan_menu(db: Any, user: User, plans, note: str = "") -> TextReply:
     prompt = _DELETE_PLAN_MENU_PROMPT.format(
         history=_recent_history(db, user),
         plans=", ".join(p.name for p in plans),
-        intro=f"{note}\n\n" if note else "",
+        #intro=f"{note}\n\n" if note else "",
     )
     return TextReply(_generate(prompt))
 
