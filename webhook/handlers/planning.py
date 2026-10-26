@@ -164,7 +164,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                         f"{ex.name} ({pe.target_sets}x)"
                         for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
                     )
-                    return plan_exercise_list(db, user, plan.name, items), "planning"
+                    return enter_idle(db, user, plan_exercise_list(db, user, plan.name, items))
 
                 user.state_data = {"step": "listing_exercises"}
                 return list_exercises_menu(db, user, plans), "planning"
@@ -239,8 +239,7 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                         f"{ex.name} ({pe.target_sets}x)"
                         for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
                     )
-                    user.state_data = {"step": "awaiting_plan"}
-                    return plan_exercise_list(db, user, plan.name, items), "planning"
+                    return enter_idle(db, user, plan_exercise_list(db, user, plan.name, items))
 
         return list_exercises_menu(db, user, plans, "🤔 Não entendi. "), "planning"
 
