@@ -7,6 +7,7 @@ from ..schemas.llm_response import ParsedExercises, ParsedPlan
 from ._shared import (
     enter_idle,
     enter_planning,
+    enter_session_setup,
     list_plans_menu,
     no_plans_saved,
     list_exercises_menu,
@@ -31,8 +32,9 @@ decider = get_decider_client()
 _AWAITING_PLAN_INSTRUCTIONS = (
     "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
     "quer ver os planos que já tem salvos, quer ver os exercícios de um plano "
-    "salvo, quer excluir um plano salvo, quer desistir de planejar, ou pode "
-    "estar tirando uma dúvida sobre como o app funciona."
+    "salvo, quer excluir um plano salvo, quer desistir de planejar, quer começar "
+    "ou registrar um treino agora (sem descrever um plano novo), ou pode estar "
+    "tirando uma dúvida sobre como o app funciona."
 )
 
 _AWAITING_PLAN_CRITERIA = {
@@ -42,6 +44,7 @@ _AWAITING_PLAN_CRITERIA = {
     "list_exercises": "Quer ver quais exercícios tem um dos planos de treino já salvos, ou perguntou como está indo ou qual o status de um plano específico",
     "delete_plan": "Quer excluir um plano de treino já salvo",
     "cancel": "Quer desistir, abortar, parar ou cancelar o planejamento desse treino",
+    "session": "Quer começar, continuar ou registrar algo de um treino agora, sem descrever um plano novo",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }
@@ -176,6 +179,8 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 return delete_plan_menu(db, user, plans), "planning"
             elif answer.choice == "cancel":
                 return _cancel_plan(db, user)
+            elif answer.choice == "session":
+                return enter_session_setup(db, user)
 
         plan_name, items = _parse_plan(db, user, text)
 
