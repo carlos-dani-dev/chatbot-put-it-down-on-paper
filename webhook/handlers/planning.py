@@ -96,6 +96,23 @@ def _parse_plan(text: str) -> tuple[str, list[dict]]:
     return parsed.name, [item.model_dump() for item in parsed.items]
 
 
+def _match_named_plan(db: Any, user: User, text: str | None, plans):
+    criteria = {f"plan:{p.id}": p.name for p in plans}
+    criteria["none"] = "Não citou nenhum plano específico pelo nome"
+
+    answer = decider.choose(
+        state=(text or "").lower(),
+        instructions=_LIST_EXERCISES_INSTRUCTIONS,
+        criteria=criteria,
+    )
+
+    if (answer.confidence or 0) >= 0.6 and answer.choice.startswith("plan:"):
+        plan_id = int(answer.choice.split(":", 1)[1])
+        return plan_repo.get_user_plan(db, user, plan_id)
+
+    return None
+
+
 def _save_plan(db: Any, user: User, draft: dict) -> tuple[TextReply, str]:
     plan_repo.save_plan(db, user, draft)
     return enter_idle(db, user, plan_saved(db, user, draft))
@@ -132,6 +149,15 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
                 plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
                     return no_plans_saved(db, user), "planning"
+
+                plan = _match_named_plan(db, user, text, plans)
+                if plan is not None:
+                    items = ", ".join(
+                        f"{ex.name} ({pe.target_sets}x)"
+                        for pe, ex in plan_repo.get_plan_exercises(db, plan.id)
+                    )
+                    return plan_exercise_list(db, user, plan.name, items), "planning"
+
                 user.state_data = {"step": "listing_exercises"}
                 return list_exercises_menu(db, user, plans), "planning"
             elif answer.choice == "delete_plan":
