@@ -37,7 +37,7 @@ _AWAITING_PLAN_CRITERIA = {
     "create_plan": "Está descrevendo um plano de treino, com exercícios",
     "start": "Só confirmou que quer planejar um treino novo, sem citar nome ou exercícios ainda",
     "list_plans": "Quer ver quais planos de treino já tem salvos",
-    "list_exercises": "Quer ver quais exercícios tem um dos planos de treino já salvos",
+    "list_exercises": "Quer ver quais exercícios tem um dos planos de treino já salvos, ou perguntou como está indo ou qual o status de um plano específico",
     "delete_plan": "Quer excluir um plano de treino já salvo",
     "cancel": "Quer desistir, abortar, parar ou cancelar o planejamento desse treino",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
