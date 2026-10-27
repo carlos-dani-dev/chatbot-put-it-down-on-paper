@@ -1,3 +1,4 @@
+import concurrent.futures
 from typing import Any
 
 from ..models import User
@@ -29,6 +30,8 @@ from ..repos import plan_repo
 
 llm = get_llm_client()
 decider = get_decider_client()
+
+_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
 _AWAITING_PLAN_INSTRUCTIONS = (
     "O usuário está descrevendo um plano de treino novo, com nome e exercícios, "
@@ -151,11 +154,23 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
 
     if step == "awaiting_plan":
 
+        plans = plan_repo.list_active_plans(db, user, limit=8)
+
+        # Dispara em paralelo com o decider de intenção: se a intenção acabar sendo
+        # "list_exercises", o nome do plano já estará resolvido, sem esperar os dois
+        # deciders em sequência. Sempre sincronizado (.result()) antes de tocar no
+        # banco de novo, já que a sessão do SQLAlchemy não é thread-safe.
+        named_plan_future = None
+        if len(plans) > 1:
+            named_plan_future = _EXECUTOR.submit(_match_named_plan, db, user, text, plans)
+
         answer = decider.choose(
             state=with_history(db, user, text),
             instructions=_AWAITING_PLAN_INSTRUCTIONS,
             criteria=_AWAITING_PLAN_CRITERIA,
         )
+
+        named_plan = named_plan_future.result() if named_plan_future is not None else None
 
         if (answer.confidence or 0) >= 0.6:
             if answer.choice == "question":
@@ -164,23 +179,20 @@ def handle_planning(db: Any | None, user: User, text: str | None = None, button_
             elif answer.choice == "start":
                 return enter_planning(db, user)
             elif answer.choice == "list_plans":
-                plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
                     return no_plans_saved(db, user), "planning"
                 return list_plans_menu(db, user, plans), "planning"
             elif answer.choice == "list_exercises":
-                plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
                     return no_plans_saved(db, user), "planning"
 
-                plan = _match_named_plan(db, user, text, plans)
+                plan = plans[0] if len(plans) == 1 else named_plan
                 if plan is not None:
                     return _show_plan_exercises(db, user, plan)
 
                 user.state_data = {"step": "listing_exercises"}
                 return list_exercises_menu(db, user, plans), "planning"
             elif answer.choice == "delete_plan":
-                plans = plan_repo.list_active_plans(db, user, limit=8)
                 if not plans:
                     return no_plans_to_delete(db, user), "planning"
                 user.state_data = {"step": "deleting_plan"}
