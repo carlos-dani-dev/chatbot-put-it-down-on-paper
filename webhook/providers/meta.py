@@ -82,6 +82,15 @@ class MetaProvider:
             button_id=button_id,
         )
 
+    def mark_as_read_with_typing(self, message_id: str) -> None:
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id,
+            "typing_indicator": {"type": "text"},
+        }
+        self._send(payload)
+
     def send_message(self, to: str, text: str) -> None:
         payload = {
             "messaging_product": "whatsapp",

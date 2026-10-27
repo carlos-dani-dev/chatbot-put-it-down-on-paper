@@ -87,6 +87,12 @@ def _process(from_number: str, text: str, button_id: str | None = None, message_
 
 def _process_and_reply(message):
 
+    if message.message_id:
+        try:
+            provider.mark_as_read_with_typing(message.message_id)
+        except Exception:
+            logger.exception(f"Falha ao marcar como lida/mostrar 'digitando' para {message.from_number}")
+
     try:
         reply = _process(message.from_number, message.text, message.button_id, message.message_id)
         if isinstance(reply, ButtonsReply):
