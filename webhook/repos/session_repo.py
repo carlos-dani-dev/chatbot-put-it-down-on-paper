@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 
-from ..models import User, WorkoutSession, WorkoutSet
+from ..models import Exercise, User, WorkoutSession, WorkoutSet
 
 
 def start_session(db: Any, user: User, plan_id: int | None) -> WorkoutSession:
@@ -63,6 +63,35 @@ def get_last_weight(db: Any, session_id: int, exercise_id: int) -> float | None:
         .limit(1)
     )
     return float(w) if w is not None else None
+
+
+def get_logged_exercises(db: Any, session_id: int) -> list[Exercise]:
+    """Exercícios distintos já registrados nessa sessão."""
+    exercise_ids = db.scalars(
+        select(WorkoutSet.exercise_id).where(WorkoutSet.session_id == session_id).distinct()
+    ).all()
+    return [db.get(Exercise, eid) for eid in exercise_ids]
+
+
+def get_last_session_sets(
+    db: Any, user: User, exercise_id: int, exclude_session_id: int | None = None
+) -> list[WorkoutSet]:
+    """Séries daquele exercício na sessão mais recente (exceto a informada) que o contém."""
+    q = select(WorkoutSet.session_id).where(
+        WorkoutSet.user_id == user.id, WorkoutSet.exercise_id == exercise_id
+    )
+    if exclude_session_id is not None:
+        q = q.where(WorkoutSet.session_id != exclude_session_id)
+    session_id = db.scalar(q.order_by(WorkoutSet.session_id.desc()).limit(1))
+
+    if session_id is None:
+        return []
+
+    return db.scalars(
+        select(WorkoutSet)
+        .where(WorkoutSet.session_id == session_id, WorkoutSet.exercise_id == exercise_id)
+        .order_by(WorkoutSet.set_number)
+    ).all()
 
 
 def log_sets(

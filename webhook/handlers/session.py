@@ -1,3 +1,4 @@
+import concurrent.futures
 import unicodedata
 from typing import Any
 from dataclasses import dataclass
@@ -21,6 +22,9 @@ from ._shared import (
     missing_weight,
     invalid_set_values,
     too_many_sets,
+    last_exercise_performance,
+    no_previous_performance,
+    which_exercise_for_performance,
     product_faq_prompt,
     with_history,
     _recent_history,
@@ -31,25 +35,35 @@ from ..repos import exercise_repo, plan_repo, session_repo
 llm = get_llm_client()
 decider = get_decider_client()
 
+_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
 MAX_SETS_PER_MESSAGE = 20
 
 _SESSION_INSTRUCTIONS = (
     "O usuário está numa sessão de treino ativa e pode estar registrando uma "
     "série (exercício, peso, repetições), querendo ver a lista de exercícios "
-    "do plano de hoje, querendo mexer nos planos de treino salvos, querendo "
-    "encerrar o treino, querendo corrigir a última série registrada, ou "
-    "tirando uma dúvida sobre como o app funciona."
+    "do plano de hoje, querendo saber o desempenho (carga/séries) de um "
+    "exercício na última vez que o treinou, querendo mexer nos planos de "
+    "treino salvos, querendo encerrar o treino, querendo corrigir a última "
+    "série registrada, ou tirando uma dúvida sobre como o app funciona."
 )
 
 _SESSION_CRITERIA = {
     "log_sets": "Está relatando uma ou mais séries: exercício, peso e repetições",
     "list_exercises": "Quer ver quais exercícios fazem parte do treino de hoje",
+    "check_performance": "Quer saber o desempenho (carga, séries, repetições) de um exercício na última vez que o treinou",
     "planning": "Quer fazer algo com planos de treino: ver os salvos, excluir um, ou adicionar exercícios a um plano (inclusive o que está usando agora)",
     "finish": "Quer encerrar o treino de hoje",
     "edit_last": "Quer corrigir ou desfazer a última série registrada",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }
+
+_CHECK_PERFORMANCE_INSTRUCTIONS = (
+    "O usuário quer saber o desempenho dele (carga, séries, repetições) num "
+    "exercício específico, na última vez que o treinou, e está dizendo (ou "
+    "pode não estar dizendo claramente) de qual exercício se trata."
+)
 
 _SESSION_PROMPT = (
     "Você interpreta mensagens de um usuário registrando séries numa academia.\n"
@@ -96,6 +110,49 @@ def _list_exercises(db: Any, user, ws: WorkoutSession) -> TextReply:
     return plan_exercises_menu(db, user, plan.name if plan else "Treino", items)
 
 
+def _session_exercises(db: Any, ws: WorkoutSession) -> list[Exercise]:
+    """Exercícios relevantes pra essa sessão: os do plano (se houver) + os já registrados hoje."""
+    seen: dict[int, Exercise] = {}
+    if ws.plan_id is not None:
+        for _, ex in plan_repo.get_plan_exercises(db, ws.plan_id):
+            seen[ex.id] = ex
+    for ex in session_repo.get_logged_exercises(db, ws.id):
+        seen[ex.id] = ex
+    return list(seen.values())
+
+
+def _match_exercise(db: Any, user, text: str | None, exercises: list[Exercise]) -> Exercise | None:
+    if len(exercises) == 1:
+        return exercises[0]
+
+    criteria = {f"exercise:{ex.id}": ex.name for ex in exercises}
+    criteria["none"] = "Não especificou nenhum exercício em particular"
+
+    answer = decider.choose(
+        state=with_history(db, user, text, limit=4),
+        instructions=_CHECK_PERFORMANCE_INSTRUCTIONS,
+        criteria=criteria,
+    )
+
+    if (answer.confidence or 0) >= 0.6 and answer.choice.startswith("exercise:"):
+        exercise_id = int(answer.choice.split(":", 1)[1])
+        return db.get(Exercise, exercise_id)
+
+    return None
+
+
+def _check_performance(db: Any, user, ws: WorkoutSession, exercise: Exercise | None) -> TextReply:
+    if exercise is None:
+        return which_exercise_for_performance(db, user)
+
+    sets = session_repo.get_last_session_sets(db, user, exercise.id, exclude_session_id=ws.id)
+    if not sets:
+        return no_previous_performance(db, user, exercise.name)
+
+    detail = ", ".join(_fmt_set(float(s.weight_kg), s.reps) for s in sets)
+    return last_exercise_performance(db, user, exercise.name, detail)
+
+
 def _edit_last(db, user, ws: WorkoutSession) -> tuple[TextReply, str]:
     removed = session_repo.undo_last_set(db, ws)
     if removed is None:
@@ -114,17 +171,32 @@ def handle_session(db, user, text=None, button_id=None):
     if button_id or not text: # botão antigo ou mídia
         return ask_for_sets(db, user), "session"
 
+    exercises = _session_exercises(db, ws)
+
+    # Dispara em paralelo com o decider principal: se a intenção acabar sendo
+    # "check_performance", o exercício já estará resolvido, sem esperar os dois
+    # deciders em sequência. Sempre sincronizado (.result()) antes de tocar no
+    # banco de novo, já que a sessão do SQLAlchemy não é thread-safe.
+    exercise_future = None
+    if len(exercises) > 1:
+        exercise_future = _EXECUTOR.submit(_match_exercise, db, user, text, exercises)
+
     answer = decider.choose(
         state=with_history(db, user, text),
         instructions=_SESSION_INSTRUCTIONS,
         criteria=_SESSION_CRITERIA,
     )
 
+    matched_exercise = exercise_future.result() if exercise_future is not None else None
+
     if (answer.confidence or 0) >= 0.6:
         if answer.choice == "finish":
             return _finish(db, user, ws)
         elif answer.choice == "list_exercises":
             return _list_exercises(db, user, ws), "session"
+        elif answer.choice == "check_performance":
+            exercise = exercises[0] if len(exercises) == 1 else matched_exercise
+            return _check_performance(db, user, ws, exercise), "session"
         elif answer.choice == "planning":
             return planning_blocked_in_session(db, user), "session"
         elif answer.choice == "edit_last":

@@ -14,8 +14,8 @@ def _recent_history(db: Any, user: User, limit: int = 2) -> str:
     return "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
 
 
-def with_history(db: Any, user: User, text: str | None) -> str:
-    return f"{_recent_history(db, user)}\nuser: {text or ''}".lower()
+def with_history(db: Any, user: User, text: str | None, limit: int = 2) -> str:
+    return f"{_recent_history(db, user, limit=limit)}\nuser: {text or ''}".lower()
 
 
 def _fix_whatsapp_bold(text: str) -> str:
@@ -396,6 +396,49 @@ _TOO_MANY_SETS_PROMPT = (
     "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
 )
 
+_LAST_EXERCISE_PERFORMANCE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer saber o "
+    "desempenho dele num exercício específico, na última vez que o treinou.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Exercício: {exercise_name}\n"
+    "Séries da última vez que ele fez esse exercício (carga x repetições): {detail}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental citar o nome do exercício e listar, numa única linha, todas as "
+    "séries acima com carga e repetições.\n"
+    "- Incentive ele a continuar registrando as séries de hoje.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_NO_PREVIOUS_PERFORMANCE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer saber o "
+    "desempenho dele num exercício específico, mas não há nenhum registro anterior "
+    "desse exercício em outra sessão.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Exercício: {exercise_name}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental avisar que não há nenhum registro anterior desse exercício.\n"
+    "- Incentive ele a continuar registrando as séries de hoje.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
+_WHICH_EXERCISE_FOR_PERFORMANCE_PROMPT = (
+    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer saber o "
+    "desempenho dele num exercício, mas não ficou claro qual exercício é esse.\n\n"
+    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    "Escreva a próxima mensagem do bot, respeitando:\n"
+    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "- É fundamental perguntar de qual exercício ele quer saber o desempenho.\n"
+    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
+    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
+    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+)
+
 _PRODUCT_FAQ = (
     "Você é o assistente do chatbot de treino no WhatsApp. O usuário fez uma "
     "pergunta sobre o produto. Responda breve e amigável, usando só estas "
@@ -664,4 +707,29 @@ def invalid_set_values(db: Any, user: User) -> TextReply:
 def too_many_sets(db: Any, user: User) -> TextReply:
 
     prompt = _TOO_MANY_SETS_PROMPT.format(history=_recent_history(db, user))
+    return TextReply(_generate(prompt))
+
+
+def last_exercise_performance(db: Any, user: User, exercise_name: str, detail: str) -> TextReply:
+
+    prompt = _LAST_EXERCISE_PERFORMANCE_PROMPT.format(
+        history=_recent_history(db, user, limit=4),
+        exercise_name=exercise_name,
+        detail=detail,
+    )
+    return TextReply(_generate(prompt))
+
+
+def no_previous_performance(db: Any, user: User, exercise_name: str) -> TextReply:
+
+    prompt = _NO_PREVIOUS_PERFORMANCE_PROMPT.format(
+        history=_recent_history(db, user, limit=4),
+        exercise_name=exercise_name,
+    )
+    return TextReply(_generate(prompt))
+
+
+def which_exercise_for_performance(db: Any, user: User) -> TextReply:
+
+    prompt = _WHICH_EXERCISE_FOR_PERFORMANCE_PROMPT.format(history=_recent_history(db, user, limit=4))
     return TextReply(_generate(prompt))
