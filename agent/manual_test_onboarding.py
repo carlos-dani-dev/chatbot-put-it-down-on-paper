@@ -2,9 +2,9 @@
 
     poetry run python -m agent.manual_test_onboarding
 """
-from webhook.database import SessionLocal
-from webhook.models import ChatMessage, User
-from webhook.repos import user_repo
+from agent.database import SessionLocal
+from agent.models import ChatMessage, User
+from agent.repos import user_repo
 
 from agent.agents import onboarding as onboarding_agent
 

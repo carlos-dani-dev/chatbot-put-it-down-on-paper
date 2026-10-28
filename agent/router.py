@@ -1,11 +1,11 @@
 """Roteador: cada um dos 5 estados tem seu próprio agente de tool-calling.
-Não há mais fallback pro `webhook.handlers.HANDLERS` — os 5 estados do
+Não há mais fallback pro `agent.handlers.HANDLERS` — os 5 estados do
 chatbot passam pelo padrão agêntico.
 """
 from typing import Any
 
-from webhook.models import User
-from webhook.schemas.replies import ButtonsReply, ListReply, TextReply
+from agent.models import User
+from agent.schemas.replies import ButtonsReply, ListReply, TextReply
 
 from .agents import idle as idle_agent
 from .agents import onboarding as onboarding_agent

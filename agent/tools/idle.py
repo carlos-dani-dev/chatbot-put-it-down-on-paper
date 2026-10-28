@@ -4,8 +4,8 @@ from typing import Any
 
 from google.genai import types
 
-from webhook.models import User
-from webhook.repos import plan_repo
+from agent.models import User
+from agent.repos import plan_repo
 
 from ..context.idle import IdleContext
 

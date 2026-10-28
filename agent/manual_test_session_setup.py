@@ -2,9 +2,9 @@
 
     poetry run python -m agent.manual_test_session_setup
 """
-from webhook.database import SessionLocal
-from webhook.models import ChatMessage, Plan, User, WorkoutSession
-from webhook.repos import plan_repo, session_repo, user_repo
+from agent.database import SessionLocal
+from agent.models import ChatMessage, Plan, User, WorkoutSession
+from agent.repos import plan_repo, session_repo, user_repo
 
 from agent.agents import session_setup as session_setup_agent
 

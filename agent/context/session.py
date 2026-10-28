@@ -1,15 +1,12 @@
-"""Monta o contexto de uma sessão de treino pro agente de tool-calling.
-
-Reaproveita os models/repos do `webhook/` — mesmo banco, mesmas tabelas.
-"""
+"""Monta o contexto de uma sessão de treino pro agente de tool-calling."""
 from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
 
-from webhook.models import Exercise, User, WorkoutSession, WorkoutSet
-from webhook.repos import plan_repo, session_repo
-from webhook.handlers._shared import _recent_history
+from agent.models import Exercise, User, WorkoutSession, WorkoutSet
+from agent.repos import plan_repo, session_repo
+from agent.shared import _recent_history
 
 
 @dataclass

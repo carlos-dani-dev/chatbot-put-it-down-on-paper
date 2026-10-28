@@ -2,9 +2,9 @@
 from dataclasses import dataclass
 from typing import Any
 
-from webhook.models import User
-from webhook.repos import plan_repo
-from webhook.handlers._shared import _recent_history
+from agent.models import User
+from agent.repos import plan_repo
+from agent.shared import _recent_history
 
 
 @dataclass

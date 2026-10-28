@@ -2,9 +2,9 @@
 
     poetry run python -m agent.manual_test_planning
 """
-from webhook.database import SessionLocal
-from webhook.models import ChatMessage, Plan, User
-from webhook.repos import plan_repo, user_repo
+from agent.database import SessionLocal
+from agent.models import ChatMessage, Plan, User
+from agent.repos import plan_repo, user_repo
 
 from agent.agents import planning as planning_agent
 

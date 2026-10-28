@@ -12,8 +12,8 @@ from typing import Any
 
 from google.genai import types
 
-from webhook.models import Exercise, User, WorkoutSession, WorkoutSet
-from webhook.repos import exercise_repo, plan_repo, session_repo
+from agent.models import Exercise, User, WorkoutSession, WorkoutSet
+from agent.repos import exercise_repo, plan_repo, session_repo
 
 from ..context.session import SessionContext
 

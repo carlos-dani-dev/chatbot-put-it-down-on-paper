@@ -4,9 +4,9 @@ import logging
 from google import genai
 from google.genai import types
 
-from webhook.config import settings
-from webhook.handlers._shared import _fix_whatsapp_bold, enter_idle, enter_session_setup
-from webhook.schemas.replies import TextReply
+from agent.config import settings
+from agent.shared import _fix_whatsapp_bold, enter_idle, enter_session_setup
+from agent.schemas.replies import TextReply
 
 from ..tools import planning as tools_mod
 from ..context.planning import build_context

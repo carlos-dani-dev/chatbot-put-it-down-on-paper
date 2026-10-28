@@ -1,8 +1,7 @@
-"""Mesmo webhook da Meta que `webhook/app.py`, mas despachando pelo roteador
-agêntico (`agent/router.py`) em vez de `webhook.handlers.HANDLERS` puro. Mesmo
-banco de dados, mesma infra de mensageria — só a lógica de `session` muda.
+"""Webhook da Meta despachando pelo roteador agêntico (`agent/router.py`) —
+cada estado do chatbot é tratado por um agente de tool-calling (ver `agent/agents/`).
 
-Rodar em porta separada pra não colidir com o `webhook/` original:
+Rodar com:
     poetry run uvicorn agent.app:app --port 8001
 """
 import logging
@@ -14,13 +13,14 @@ from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from webhook.config import get_provider, settings
-from webhook.database import engine, SessionLocal
-from webhook.handlers import handle_resume_check, handle_universal_command
-from webhook.models import Base
-from webhook.repos import chat_message_repo
-from webhook.repos.user_repo import get_or_create_user
-from webhook.schemas.replies import ButtonsReply, ListReply
+from agent.config import get_provider, settings
+from agent.database import engine, SessionLocal
+from .resume_check import handle_resume_check
+from .commands import handle_universal_command
+from agent.models import Base
+from agent.repos import chat_message_repo
+from agent.repos.user_repo import get_or_create_user
+from agent.schemas.replies import ButtonsReply, ListReply
 
 from .router import handle_message
 
@@ -37,7 +37,7 @@ provider = get_provider()
 
 app = FastAPI(
     title="Chatbot (agent, tool-calling)",
-    description="Reprodução agêntica do chatbot — session via tool-calling, resto via webhook/handlers",
+    description="Chatbot de treino no WhatsApp — cada estado tratado por um agente de tool-calling",
     version="0.1.0",
     lifespan=lifespan,
 )

@@ -1,16 +1,15 @@
-"""Agente de tool-calling pro estado `session` — substitui o decider+criteria
-de `webhook/handlers/session.py` por um agente Gemini com ferramentas restritas
-ao contexto real (ver `agent/tools/session.py` e `agent/context/session.py`).
+"""Agente de tool-calling pro estado `session` — um agente Gemini com ferramentas
+restritas ao contexto real (ver `agent/tools/session.py` e `agent/context/session.py`).
 """
 import logging
 
 from google import genai
 from google.genai import types
 
-from webhook.config import settings
-from webhook.handlers._shared import _fix_whatsapp_bold, enter_idle, idle_menu
-from webhook.repos import session_repo
-from webhook.schemas.replies import TextReply
+from agent.config import settings
+from agent.shared import _fix_whatsapp_bold, enter_idle, idle_menu
+from agent.repos import session_repo
+from agent.schemas.replies import TextReply
 
 from ..tools import session as tools_mod
 from ..context.session import build_context

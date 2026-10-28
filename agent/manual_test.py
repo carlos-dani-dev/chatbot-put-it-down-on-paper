@@ -1,13 +1,13 @@
 """Teste manual de ponta a ponta do agente de `session` (tool-calling).
 
-Roda contra o MESMO banco configurado em webhook/.env — usa um número de
+Roda contra o banco configurado em agent/.env — usa um número de
 telefone descartável e limpa tudo no final.
 
     poetry run python agent/manual_test.py
 """
-from webhook.database import SessionLocal
-from webhook.models import ChatMessage, Plan, User, WorkoutSession, WorkoutSet
-from webhook.repos import plan_repo, session_repo, user_repo
+from agent.database import SessionLocal
+from agent.models import ChatMessage, Plan, User, WorkoutSession, WorkoutSet
+from agent.repos import plan_repo, session_repo, user_repo
 
 from agent.agents import session as session_agent
 from agent.tools import session as tools

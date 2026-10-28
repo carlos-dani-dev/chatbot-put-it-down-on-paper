@@ -4,7 +4,7 @@ from typing import Any
 
 from google.genai import types
 
-from webhook.models import User
+from agent.models import User
 
 from ..context.onboarding import OnboardingContext
 
