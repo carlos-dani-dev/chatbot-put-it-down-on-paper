@@ -40,6 +40,6 @@ def get_llm_client():
     return GeminiClient(api_key=settings.gemini_api_key)
 
 def get_decider_client():
-    from .clients.decision_model import MercuryDecideClient
+    from .clients.decision_model import ElephantDecideClient
 
-    return MercuryDecideClient(api_key=settings.openrouter_api_key)
+    return ElephantDecideClient(api_key=settings.openrouter_api_key)

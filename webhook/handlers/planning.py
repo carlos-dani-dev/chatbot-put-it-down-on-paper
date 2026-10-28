@@ -43,12 +43,12 @@ _AWAITING_PLAN_INSTRUCTIONS = (
 
 _AWAITING_PLAN_CRITERIA = {
     "create_plan": "Está descrevendo um plano de treino, com exercícios",
-    "start": "Só confirmou que quer planejar um treino novo, sem citar nome ou exercícios ainda",
+    "start": "Só confirmou que vai PLANEJAR um treino novo agora (ex.: 'vamos', 'bora planejar', 'sim', 'quero'), sem citar nome ou exercícios ainda — é sobre criar o plano no papel, não sobre treinar de verdade",
     "list_plans": "Quer ver quais planos de treino já tem salvos",
     "list_exercises": "Quer ver quais exercícios tem um dos planos de treino já salvos, ou perguntou como está indo ou qual o status de um plano específico",
     "delete_plan": "Quer excluir um plano de treino já salvo",
     "cancel": "Quer desistir, abortar, parar ou cancelar o planejamento desse treino",
-    "session": "Quer começar, continuar ou registrar algo de um treino agora, sem descrever um plano novo",
+    "session": "Quer COMEÇAR a treinar de verdade agora (ex.: 'quero começar um treino', 'bora treinar', 'iniciar sessão', 'vou malhar'), continuar ou registrar algo de um treino — é sobre se exercitar, não sobre planejar",
     "question": "Está fazendo uma pergunta sobre como o app funciona",
     "unclear": "Não dá pra saber o que ele quer",
 }

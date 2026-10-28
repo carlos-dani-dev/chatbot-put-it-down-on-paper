@@ -133,3 +133,15 @@ class MercuryDecideClient:
                 if ultima or not _transient(erro):
                     raise
                 time.sleep(2**attempt)
+
+
+class ElephantDecideClient(MercuryDecideClient):
+    """Cliente pro Elephant 1 (Baseten) via OpenRouter — mesma API de Decisions do
+    Mercury Decide (/api/alpha/decisions), só muda o modelo padrão. Gratuito
+    (usage.cost = 0), confirmado direto na resposta da API.
+    """
+
+    DEFAULT_MODEL = "baseten/elephant-1:free"
+
+    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, attempts: int = ATTEMPTS):
+        super().__init__(api_key=api_key, model=model, attempts=attempts)
