@@ -9,8 +9,9 @@ from webhook.database import SessionLocal
 from webhook.models import ChatMessage, Plan, User, WorkoutSession, WorkoutSet
 from webhook.repos import plan_repo, session_repo, user_repo
 
-from agent import session_agent, tools
-from agent.context import build_context
+from agent.agents import session as session_agent
+from agent.tools import session as tools
+from agent.context.session import build_context
 
 TEST_PHONE = "0000000000-agent-test"
 

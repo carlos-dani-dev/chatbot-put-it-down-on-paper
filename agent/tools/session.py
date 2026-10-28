@@ -15,9 +15,9 @@ from google.genai import types
 from webhook.models import Exercise, User, WorkoutSession, WorkoutSet
 from webhook.repos import exercise_repo, plan_repo, session_repo
 
-from .context import SessionContext
+from ..context.session import SessionContext
 
-logger = logging.getLogger("agent.tools")
+logger = logging.getLogger("agent.tools.session")
 
 MAX_SETS_PER_CALL = 20
 

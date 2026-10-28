@@ -1,6 +1,6 @@
 """Agente de tool-calling pro estado `session` — substitui o decider+criteria
 de `webhook/handlers/session.py` por um agente Gemini com ferramentas restritas
-ao contexto real (ver `agent/tools.py` e `agent/context.py`).
+ao contexto real (ver `agent/tools/session.py` e `agent/context/session.py`).
 """
 import logging
 
@@ -8,12 +8,12 @@ from google import genai
 from google.genai import types
 
 from webhook.config import settings
-from webhook.handlers._shared import enter_idle, idle_menu
+from webhook.handlers._shared import _fix_whatsapp_bold, enter_idle, idle_menu
 from webhook.repos import session_repo
 from webhook.schemas.replies import TextReply
 
-from . import tools as tools_mod
-from .context import build_context
+from ..tools import session as tools_mod
+from ..context.session import build_context
 
 logger = logging.getLogger("agent.session")
 
@@ -60,6 +60,8 @@ def _system_prompt(ctx) -> str:
         "- Sua resposta final em texto só pode afirmar o que o resultado de uma ferramenta "
         "confirmou de verdade — nunca invente números, nomes ou quantidades que não vieram do "
         "resultado de uma chamada de ferramenta.\n"
+        "- NUNCA mencione o identificador técnico (como 'ex:3' ou 'set:5') na resposta final — "
+        "fale sempre só pelo nome do exercício.\n"
         "- Seja sucinto e direto. Negrito no estilo WhatsApp é um asterisco só de cada lado, colado "
         "na palavra (*assim*), nunca dois.\n"
         "- Se a mensagem não corresponder a nenhuma ferramenta (ex.: uma dúvida genérica), responda "
@@ -96,7 +98,7 @@ def handle(db, user, text, button_id=None):
         function_calls = [p.function_call for p in parts if p.function_call is not None]
 
         if not function_calls:
-            final_text = (response.text or "").strip() or "🤔 Não consegui processar isso, pode repetir?"
+            final_text = _fix_whatsapp_bold((response.text or "").strip() or "🤔 Não consegui processar isso, pode repetir?")
             return TextReply(final_text), next_state
 
         contents.append(candidate.content)
@@ -130,7 +132,7 @@ def handle(db, user, text, button_id=None):
                 contents=contents,
                 config=types.GenerateContentConfig(system_instruction=_system_prompt(ctx), temperature=_TEMPERATURE),
             )
-            final_text = (closing.text or "").strip() or "🎉 Treino finalizado!"
+            final_text = _fix_whatsapp_bold((closing.text or "").strip() or "🎉 Treino finalizado!")
             return TextReply(final_text), next_state
 
     return TextReply("🤔 Tive dificuldade pra processar isso, pode tentar de novo?"), next_state
