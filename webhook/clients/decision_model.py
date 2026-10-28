@@ -87,7 +87,7 @@ class MercuryDecideClient:
     """
 
     BASE_URL = "https://openrouter.ai/api/alpha/decisions"
-    DEFAULT_MODEL = "inception/mercury-decide:free"
+    DEFAULT_MODEL = "inception/mercury-decide"
 
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL, attempts: int = ATTEMPTS):
         self._api_key = api_key
