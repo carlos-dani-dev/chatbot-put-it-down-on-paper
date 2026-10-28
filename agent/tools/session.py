@@ -98,6 +98,17 @@ def log_sets(
     }
 
 
+def format_log_sets_fact(result: dict) -> str:
+    """Monta a linha de confirmação direto do resultado de `log_sets` — nunca a partir
+    de texto da LLM, pra garantir que nome e números batem exatamente com o que foi gravado.
+    """
+    sets_desc = ", ".join(f"{s['weight_kg']:g}kg x {s['reps']}" for s in result["sets_logged"])
+    first, last = result["set_range"]
+    faixa = f"série {first}" if first == last else f"séries {first} a {last}"
+    progresso = f" — progresso {result['total_done']}/{result['target_sets']}" if result.get("target_sets") else ""
+    return f"✅ *{result['exercise_name']}*: {faixa} ({sets_desc}){progresso}"
+
+
 def request_delete_sets(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext, set_ids: list[str]) -> dict:
     valid_ids, bad = ctx.find_set_ids(set_ids)
     if not valid_ids:

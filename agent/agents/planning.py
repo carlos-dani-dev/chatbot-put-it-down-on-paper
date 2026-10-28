@@ -44,6 +44,10 @@ def _system_prompt(ctx) -> str:
         "- Se o usuário descrever um plano novo ou mais exercícios, chame add_to_draft — é "
         "fundamental sempre ter nome do plano e exercícios com quantidade de séries antes "
         "de poder salvar.\n"
+        "- O nome de cada exercício em add_to_draft deve ser EXATAMENTE o que o usuário "
+        "escreveu (copie as palavras literais da mensagem dele) — nunca troque por um sinônimo "
+        "ou variação parecida (ex.: se ele disse 'barra', nunca escreva 'halteres'; se disse "
+        "'halteres', nunca escreva 'barra' ou 'máquina').\n"
         "- Excluir um plano é uma ação destrutiva: chame request_delete_plan pra só PROPOR. "
         "Só chame confirm_pending_action depois que o usuário confirmar explicitamente, numa "
         "mensagem separada — nunca confirme sozinho na mesma mensagem em que foi só proposto.\n"
@@ -80,6 +84,7 @@ def handle(db, user, text, button_id=None):
 
         if not function_calls:
             final_text = _fix_whatsapp_bold((response.text or "").strip() or "🤔 Não consegui entender, pode repetir?")
+            logger.info("agent.planning final_text user=%s text=%r", user.phone_number, final_text)
             return TextReply(final_text), next_state
 
         fc = function_calls[0]
@@ -122,6 +127,7 @@ def handle(db, user, text, button_id=None):
                 config=types.GenerateContentConfig(system_instruction=_system_prompt(ctx), temperature=_TEMPERATURE),
             )
             final_text = _fix_whatsapp_bold((closing.text or "").strip() or "✅ Pronto!")
+            logger.info("agent.planning final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return enter_idle(db, user, TextReply(final_text))
 
     return TextReply("🤔 Tive dificuldade pra processar isso, pode tentar de novo?"), next_state

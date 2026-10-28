@@ -21,7 +21,7 @@ _MAX_TOOL_ROUNDS = 4
 _TEMPERATURE = 0.1
 
 
-def _system_prompt(ctx) -> str:
+def _system_prompt(ctx, facts_confirmed: bool = False) -> str:
     plan_line = f"Plano de hoje: {ctx.plan_name}." if ctx.plan_name else "Treino livre, sem plano definido."
 
     exercises_line = "; ".join(
@@ -39,6 +39,14 @@ def _system_prompt(ctx) -> str:
         if ctx.pending_action else "Nenhuma ação pendente de confirmação agora."
     )
 
+    facts_note = (
+        "\n- Uma confirmação com o nome do exercício, as séries e o progresso já foi (ou vai ser) "
+        "exibida automaticamente pelo sistema antes da sua resposta — NÃO repita o nome do "
+        "exercício nem nenhum número nessa resposta, só reaja numa frase curta ou pergunte o que "
+        "vem a seguir."
+        if facts_confirmed else ""
+    )
+
     return (
         "Você é o assistente de um chatbot de treino no WhatsApp, numa sessão de treino ativa.\n\n"
         f"{plan_line}\n"
@@ -51,7 +59,10 @@ def _system_prompt(ctx) -> str:
         "(campo exercise_id / set_ids) — nunca invente um ID, nunca use o nome do exercício como "
         "se fosse o ID.\n"
         "- Se o usuário descrever um exercício que não está na lista acima, use exercise_id='new' "
-        "e preencha new_exercise_name com o nome.\n"
+        "e preencha new_exercise_name com o nome EXATAMENTE como o usuário escreveu (copie as "
+        "palavras literais da mensagem dele) — nunca troque por um sinônimo ou variação parecida "
+        "(ex.: se ele disse 'barra', nunca escreva 'halteres'; se disse 'halteres', nunca escreva "
+        "'barra' ou 'máquina').\n"
         "- Excluir séries é uma ação destrutiva: chame request_delete_sets ou undo_last_set pra só "
         "PROPOR a exclusão. Só chame confirm_pending_action depois que o usuário confirmar "
         "explicitamente, numa mensagem separada, que quer mesmo excluir — nunca confirme sozinho "
@@ -65,6 +76,7 @@ def _system_prompt(ctx) -> str:
         "na palavra (*assim*), nunca dois.\n"
         "- Se a mensagem não corresponder a nenhuma ferramenta (ex.: uma dúvida genérica), responda "
         "direto em texto, sem chamar ferramenta nenhuma."
+        f"{facts_note}"
     )
 
 
@@ -80,12 +92,18 @@ def handle(db, user, text, button_id=None):
 
     next_state = "session"
     contents = [types.Content(role="user", parts=[types.Part(text=text)])]
+    fact_lines: list[str] = []
+
+    def _compose(llm_text: str, fallback: str) -> str:
+        llm_text = llm_text.strip()
+        parts = fact_lines + ([llm_text] if llm_text else [])
+        return "\n\n".join(parts) or fallback
 
     for _round in range(_MAX_TOOL_ROUNDS):
         ctx = build_context(db, user, ws)
         declarations = tools_mod.build_declarations(ctx)
         config = types.GenerateContentConfig(
-            system_instruction=_system_prompt(ctx),
+            system_instruction=_system_prompt(ctx, facts_confirmed=bool(fact_lines)),
             temperature=_TEMPERATURE,
             tools=[types.Tool(function_declarations=declarations)],
         )
@@ -97,7 +115,10 @@ def handle(db, user, text, button_id=None):
         function_calls = [p.function_call for p in parts if p.function_call is not None]
 
         if not function_calls:
-            final_text = _fix_whatsapp_bold((response.text or "").strip() or "🤔 Não consegui processar isso, pode repetir?")
+            final_text = _fix_whatsapp_bold(
+                _compose((response.text or ""), "🤔 Não consegui processar isso, pode repetir?")
+            )
+            logger.info("agent.session final_text user=%s text=%r", user.phone_number, final_text)
             return TextReply(final_text), next_state
 
         contents.append(candidate.content)
@@ -118,6 +139,9 @@ def handle(db, user, text, button_id=None):
 
             logger.info("agent.session tool_result user=%s name=%s result=%s", user.phone_number, fc.name, result)
 
+            if fc.name == "log_sets" and isinstance(result, dict) and result.get("ok"):
+                fact_lines.append(tools_mod.format_log_sets_fact(result))
+
             if isinstance(result, dict) and result.pop("next_state", None) == "idle":
                 next_state = "idle"
 
@@ -129,9 +153,13 @@ def handle(db, user, text, button_id=None):
             closing = client.models.generate_content(
                 model=_MODEL,
                 contents=contents,
-                config=types.GenerateContentConfig(system_instruction=_system_prompt(ctx), temperature=_TEMPERATURE),
+                config=types.GenerateContentConfig(
+                    system_instruction=_system_prompt(ctx, facts_confirmed=bool(fact_lines)),
+                    temperature=_TEMPERATURE,
+                ),
             )
-            final_text = _fix_whatsapp_bold((closing.text or "").strip() or "🎉 Treino finalizado!")
+            final_text = _fix_whatsapp_bold(_compose((closing.text or ""), "🎉 Treino finalizado!"))
+            logger.info("agent.session final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return TextReply(final_text), next_state
 
     return TextReply("🤔 Tive dificuldade pra processar isso, pode tentar de novo?"), next_state
