@@ -118,6 +118,22 @@ class MetaProvider:
         }
         self._send(payload)
 
+    def send_cta_url_button(self, to: str, text: str, button_text: str, url: str) -> None:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "interactive",
+            "interactive": {
+                "type": "cta_url",
+                "body": {"text": text},
+                "action": {
+                    "name": "cta_url",
+                    "parameters": {"display_text": button_text, "url": url},
+                },
+            },
+        }
+        self._send(payload)
+
     def send_interactive_list(self, to: str, text: str, button_label: str,
                               rows: list[tuple[str, str]]) -> None:
         payload = {

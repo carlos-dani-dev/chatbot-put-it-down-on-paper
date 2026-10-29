@@ -6,7 +6,7 @@ from google.genai import types
 
 from agent.config import settings
 from agent.shared import _fix_whatsapp_bold, enter_planning, enter_session_setup, idle_menu
-from agent.schemas.replies import TextReply
+from agent.schemas.replies import CtaUrlReply, TextReply
 
 from ..tools import idle as tools_mod
 from ..context.idle import build_context
@@ -32,11 +32,7 @@ def _system_prompt(ctx) -> str:
         "- Se ele perguntar quais planos tem, chame list_plans.\n"
         "- Se ele perguntar os exercícios de um plano específico (ou como está indo um plano), "
         "chame list_plan_exercises.\n"
-        "- Se ele quiser ver resultados/progresso/histórico de treinos, chame mostrar_resultados "
-        "e inclua a URL do campo 'url' do resultado EXATAMENTE como veio, caractere por caractere "
-        "— nunca reescreva, encurte ou invente a URL. Escreva a URL pura, solta no texto (ex.: "
-        "'https://...') — NUNCA em formato Markdown tipo '[texto](url)', porque o WhatsApp não "
-        "entende isso e o link não fica clicável.\n"
+        "- Se ele quiser ver resultados/progresso/histórico de treinos, chame mostrar_resultados.\n"
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou — nunca invente "
         "nomes de planos ou exercícios que não vieram de um resultado de ferramenta.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
@@ -79,6 +75,16 @@ def handle(db, user, text, button_id=None):
             return enter_planning(db, user)
         if fc.name == "start_session":
             return enter_session_setup(db, user)
+        if fc.name == "mostrar_resultados":
+            result = tools_mod.mostrar_resultados(db, user, ctx)
+            logger.info("agent.idle tool_result user=%s name=%s result=%s", user.phone_number, fc.name, result)
+            if result.get("ok"):
+                return CtaUrlReply(
+                    "📊 Toque no botão abaixo pra ver seus resultados completos.",
+                    "Ver resultados",
+                    result["url"],
+                ), "idle"
+            return TextReply(result.get("error", "Não consegui gerar o link agora, tenta de novo.")), "idle"
 
         contents.append(candidate.content)
         impl = tools_mod.TOOL_IMPLS.get(fc.name)

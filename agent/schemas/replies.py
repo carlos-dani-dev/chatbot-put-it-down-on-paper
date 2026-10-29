@@ -15,3 +15,9 @@ class TextReply:
 class ButtonsReply:
     text: str
     buttons: list[tuple[str, str]]
+
+@dataclass
+class CtaUrlReply:
+    text: str
+    button_text: str
+    url: str

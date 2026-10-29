@@ -23,7 +23,7 @@ from .commands import handle_universal_command
 from agent.models import Base, User
 from agent.repos import chat_message_repo
 from agent.repos.user_repo import get_or_create_user
-from agent.schemas.replies import ButtonsReply, ListReply
+from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply
 
 from .dashboard import build_dashboard_context
 from .router import handle_message
@@ -106,6 +106,8 @@ def _process_and_reply(message):
             provider.send_interactive_buttons(message.from_number, reply.text, reply.buttons)
         elif isinstance(reply, ListReply):
             provider.send_interactive_list(message.from_number, reply.text, reply.button_label, reply.rows)
+        elif isinstance(reply, CtaUrlReply):
+            provider.send_cta_url_button(message.from_number, reply.text, reply.button_text, reply.url)
         else:
             provider.send_message(message.from_number, reply.text)
         logger.info(f"[agent] Resposta enviada para {message.from_number}")
