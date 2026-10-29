@@ -14,9 +14,14 @@ def _recent_history(db: Any, user: User, limit: int = 2) -> str:
     return "\n".join(f"{m.role}: {m.content}" for m in reversed(last_messages)) or "(nenhuma mensagem anterior)"
 
 
+_MARKDOWN_LINK_RE = re.compile(r"\[([^\]\n]*)\]\((https?://[^\s)]+)\)")
+
+
 def _fix_whatsapp_bold(text: str) -> str:
     text = text.replace("**", "*")
-    return re.sub(r"\*([^*\n]+)\*", lambda m: f"*{m.group(1).strip()}*", text)
+    text = re.sub(r"\*([^*\n]+)\*", lambda m: f"*{m.group(1).strip()}*", text)
+    # WhatsApp não entende link em Markdown ([texto](url)) — só autolinka URL crua no texto.
+    return _MARKDOWN_LINK_RE.sub(lambda m: m.group(2), text)
 
 
 def _generate(prompt: str) -> str:
