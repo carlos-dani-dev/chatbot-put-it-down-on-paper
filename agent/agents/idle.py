@@ -35,7 +35,7 @@ def _system_prompt(ctx) -> str:
         "- Se ele quiser ver resultados/progresso/histórico de treinos, chame mostrar_resultados "
         "e inclua a URL do campo 'url' do resultado EXATAMENTE como veio, caractere por caractere "
         "— nunca reescreva, encurte ou invente a URL. Escreva a URL pura, solta no texto (ex.: "
-        "'http://...') — NUNCA em formato Markdown tipo '[texto](url)', porque o WhatsApp não "
+        "'https://...') — NUNCA em formato Markdown tipo '[texto](url)', porque o WhatsApp não "
         "entende isso e o link não fica clicável.\n"
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou — nunca invente "
         "nomes de planos ou exercícios que não vieram de um resultado de ferramenta.\n"
