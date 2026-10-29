@@ -4,11 +4,32 @@ leitura, sem LLM nenhuma no meio: tudo vem direto de consultas no banco.
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
-from .models import Exercise, User, WorkoutSession, WorkoutSet
+from .models import User, WorkoutSession, WorkoutSet
 
-RECENT_SESSIONS_LIMIT = 8
+PODIUM_SIZE = 3
+FREE_TRAINING_LABEL = "Treino livre"
+
+
+def _format_compact_kg(value: float) -> str:
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}K"
+    return f"{value:.0f}"
+
+
+def _format_relative_date(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta_days = (datetime.now(timezone.utc).date() - dt.date()).days
+    date_label = dt.strftime("%d/%m")
+    if delta_days == 0:
+        return f"Hoje, {date_label}"
+    if delta_days == 1:
+        return f"Ontem, {date_label}"
+    return date_label
 
 
 def build_dashboard_context(db: Any, user: User) -> dict:
@@ -18,71 +39,96 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         .order_by(WorkoutSession.started_at.desc())
     ).all()
 
-    total_sets = db.scalar(
-        select(func.count()).select_from(WorkoutSet).where(WorkoutSet.user_id == user.id)
-    ) or 0
-    total_volume = db.scalar(
-        select(func.coalesce(func.sum(WorkoutSet.weight_kg * WorkoutSet.reps), 0))
-        .where(WorkoutSet.user_id == user.id)
-    ) or 0
+    if not sessions:
+        return {"user": user, "has_data": False}
 
-    last_session = sessions[0] if sessions else None
-    days_since_last = None
-    if last_session is not None:
-        started_at = last_session.started_at
-        if started_at.tzinfo is None:
-            started_at = started_at.replace(tzinfo=timezone.utc)
-        days_since_last = (datetime.now(timezone.utc) - started_at).days
-
-    recent_sessions = []
-    for ws in sessions[:RECENT_SESSIONS_LIMIT]:
-        sets = db.scalars(
+    sets_by_session: dict[int, list[WorkoutSet]] = {
+        ws.id: db.scalars(
             select(WorkoutSet).where(WorkoutSet.session_id == ws.id).order_by(WorkoutSet.id)
         ).all()
+        for ws in sessions
+    }
 
-        by_exercise: dict[int, dict] = {}
-        for s in sets:
-            entry = by_exercise.setdefault(s.exercise_id, {"name": s.exercise.name, "sets": []})
-            entry["sets"].append({"weight_kg": float(s.weight_kg), "reps": s.reps})
+    # --- treino mais recente ---
+    last = sessions[0]
+    last_sets = sets_by_session[last.id]
+    last_volume = sum(float(s.weight_kg) * s.reps for s in last_sets)
 
-        recent_sessions.append({
-            "date": ws.started_at,
-            "plan_name": ws.plan.name if ws.plan else "Treino livre",
-            "exercises": list(by_exercise.values()),
-            "total_sets": len(sets),
+    seen_ids: set[int] = set()
+    last_exercises: list[dict] = []
+    for s in last_sets:
+        if s.exercise_id in seen_ids:
+            continue
+        seen_ids.add(s.exercise_id)
+        last_exercises.append({
+            "name": s.exercise.name,
+            "best_kg": max(float(x.weight_kg) for x in last_sets if x.exercise_id == s.exercise_id),
         })
 
-    progress_rows = db.execute(
-        select(
-            WorkoutSet.exercise_id,
-            Exercise.name,
-            WorkoutSession.started_at,
-            func.max(WorkoutSet.weight_kg),
+    last_session = {
+        "date_label": _format_relative_date(last.started_at),
+        "plan_name": last.plan.name if last.plan else FREE_TRAINING_LABEL,
+        "volume_label": _format_compact_kg(last_volume),
+        "exercises": last_exercises,
+    }
+
+    # --- progresso agrupado por plano (vira as abas) ---
+    plan_order: list[str] = []
+    plan_exercises: dict[str, dict[int, dict]] = {}
+    plan_session_count: dict[str, int] = {}
+
+    for ws in reversed(sessions):  # ordem cronológica — os pontos de progresso precisam ir do mais antigo pro mais recente
+        plan_name = ws.plan.name if ws.plan else FREE_TRAINING_LABEL
+        if plan_name not in plan_exercises:
+            plan_exercises[plan_name] = {}
+            plan_order.append(plan_name)
+        plan_session_count[plan_name] = plan_session_count.get(plan_name, 0) + 1
+
+        per_exercise_best: dict[int, dict] = {}
+        for s in sets_by_session[ws.id]:
+            entry = per_exercise_best.setdefault(s.exercise_id, {"name": s.exercise.name, "weight_kg": 0.0})
+            entry["weight_kg"] = max(entry["weight_kg"], float(s.weight_kg))
+
+        for exercise_id, info in per_exercise_best.items():
+            ex_entry = plan_exercises[plan_name].setdefault(
+                exercise_id, {"name": info["name"], "points": []}
+            )
+            ex_entry["points"].append({
+                "label": ws.started_at.strftime("%d/%m"),
+                "weight_kg": info["weight_kg"],
+            })
+
+    plans = []
+    for plan_name in plan_order:
+        exercises = sorted(
+            plan_exercises[plan_name].values(), key=lambda e: len(e["points"]), reverse=True
         )
-        .join(Exercise, Exercise.id == WorkoutSet.exercise_id)
-        .join(WorkoutSession, WorkoutSession.id == WorkoutSet.session_id)
-        .where(WorkoutSet.user_id == user.id)
-        .group_by(WorkoutSet.exercise_id, WorkoutSession.id, Exercise.name, WorkoutSession.started_at)
-        .order_by(WorkoutSession.started_at)
-    ).all()
+        for ex in exercises:
+            best = max(p["weight_kg"] for p in ex["points"])
+            ex["best_kg"] = best
+            ex["best_label"] = _format_compact_kg(best)
+            ex["is_pr"] = ex["points"][-1]["weight_kg"] >= best
+        plans.append({"name": plan_name, "exercises": exercises})
 
-    progress_by_exercise: dict[int, dict] = {}
-    for exercise_id, name, started_at, max_weight in progress_rows:
-        entry = progress_by_exercise.setdefault(exercise_id, {"name": name, "points": []})
-        entry["points"].append({"label": started_at.strftime("%d/%m"), "weight_kg": float(max_weight)})
+    plans.sort(key=lambda p: plan_session_count[p["name"]], reverse=True)
 
-    exercises_progress = sorted(
-        progress_by_exercise.values(), key=lambda e: len(e["points"]), reverse=True
-    )
+    # --- treinos mais feitos (pódio) ---
+    ranking = sorted(plan_session_count.items(), key=lambda kv: kv[1], reverse=True)[:PODIUM_SIZE]
+    max_count = ranking[0][1] if ranking else 1
+    podium = [
+        {
+            "rank": i + 1,
+            "name": name,
+            "count": count,
+            "height_pct": max(28, round(count / max_count * 100)),
+        }
+        for i, (name, count) in enumerate(ranking)
+    ]
 
     return {
         "user": user,
-        "stats": {
-            "total_sessions": len(sessions),
-            "total_sets": total_sets,
-            "total_volume_kg": round(float(total_volume)),
-            "days_since_last": days_since_last,
-        },
-        "recent_sessions": recent_sessions,
-        "exercises_progress": exercises_progress,
+        "has_data": True,
+        "last_session": last_session,
+        "plans": plans,
+        "podium": podium,
     }
