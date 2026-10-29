@@ -11,18 +11,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from agent.config import get_provider, settings
 from agent.database import engine, SessionLocal
 from .resume_check import handle_resume_check
 from .commands import handle_universal_command
-from agent.models import Base
+from agent.models import Base, User, WorkoutSession
 from agent.repos import chat_message_repo
 from agent.repos.user_repo import get_or_create_user
 from agent.schemas.replies import ButtonsReply, ListReply
 
 from .router import handle_message
+from .signing import verify_result_link
 
 
 @asynccontextmanager
@@ -142,3 +143,52 @@ async def receive_wap_message(request: Request, background: BackgroundTasks):
 
     background.add_task(_process_and_reply, message)
     return PlainTextResponse("", status_code=200)
+
+
+def _render_results_html(user: "User", sessions: list["WorkoutSession"]) -> str:
+    if not sessions:
+        body = "<p>Nenhum treino registrado ainda.</p>"
+    else:
+        blocks = []
+        for ws in sessions:
+            title = ws.plan.name if ws.plan else "Treino livre"
+            date = ws.started_at.strftime("%d/%m/%Y %H:%M")
+            rows = "".join(
+                f"<li>{s.exercise.name}: {float(s.weight_kg):g}kg x {s.reps}</li>" for s in ws.sets
+            ) or "<li>(sem séries registradas)</li>"
+            blocks.append(f"<section><h2>{title} — {date}</h2><ul>{rows}</ul></section>")
+        body = "".join(blocks)
+
+    return (
+        "<!doctype html><html lang='pt-br'><head><meta charset='utf-8'>"
+        "<title>Seus resultados</title></head><body>"
+        f"<h1>Resultados de {user.phone_number}</h1>"
+        f"{body}"
+        "</body></html>"
+    )
+
+
+@app.get("/webhook/dashboard")
+async def show_results_page(request: Request):
+    user_id = request.query_params.get("user_id")
+    exp = request.query_params.get("exp")
+    sig = request.query_params.get("sig")
+
+    if not verify_result_link(user_id, exp, sig):
+        return HTMLResponse("<h1>Link inválido ou expirado</h1>", status_code=403)
+
+    with SessionLocal() as db:
+        user = db.get(User, int(user_id))
+        if user is None:
+            return HTMLResponse("<h1>Usuário não encontrado</h1>", status_code=404)
+
+        sessions = (
+            db.query(WorkoutSession)
+            .filter(WorkoutSession.user_id == user.id, WorkoutSession.ended_at.is_not(None))
+            .order_by(WorkoutSession.started_at.desc())
+            .limit(10)
+            .all()
+        )
+        html = _render_results_html(user, sessions)
+
+    return HTMLResponse(html)

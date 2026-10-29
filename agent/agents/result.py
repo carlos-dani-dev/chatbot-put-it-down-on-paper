@@ -1,0 +1,1 @@
+"Agente de tool-calling pro estado `result`"

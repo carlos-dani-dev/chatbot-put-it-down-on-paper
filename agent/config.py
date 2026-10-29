@@ -19,6 +19,9 @@ class Settings:
 
     db_url: str = os.getenv("SQLALCHEMY_DB_URL")
 
+    dashboard_signing_key: str = os.getenv("DASHBOARD_SIGNING_KEY", "")
+    public_base_url: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:8001").rstrip("/")
+
 settings = Settings()
 
 def get_provider():
