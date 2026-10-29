@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seus resultados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --surface-1: #101720;
+    --surface-2: #161F2C;
+    --surface-3: #1E293B;
+    --text-primary: #F5F5EF;
+    --text-secondary: #9AA7BD;
+    --text-muted: #6B7A91;
+    --accent: #3B82F6;
+    --accent-soft: #9EC5F4;
+    --accent-wash: rgba(59, 130, 246, 0.12);
+    --accent-deep: #1E3A8A;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: 'Montserrat', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  header.mark {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  header.mark .wordmark {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  header.mark .wordmark::after {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin-top: 4px;
+  }
+
+  header.mark .phone {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  h2.section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+    margin: 32px 0 12px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-tile {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+
+  .stat-tile .label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .stat-tile .value {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+
+  .stat-tile .value .unit {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-left: 2px;
+  }
+
+  .session-card {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .session-card .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+
+  .session-card .plan-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-primary);
+  }
+
+  .session-card .date {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .session-card .exercise-row {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 3px 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .session-card .exercise-row .name {
+    color: var(--text-primary);
+  }
+
+  .exercise-card {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: 14px;
+    padding: 14px 16px 6px;
+    margin-bottom: 12px;
+  }
+
+  .exercise-card .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .exercise-card .name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .exercise-card .best {
+    font-size: 13px;
+    color: var(--accent-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .exercise-card canvas {
+    width: 100% !important;
+    height: 72px !important;
+  }
+
+  .empty-state {
+    background: var(--surface-2);
+    border: 1px dashed var(--surface-3);
+    border-radius: 14px;
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  footer {
+    margin-top: 36px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="mark">
+    <div class="wordmark">GYM BRO</div>
+    <div class="phone">{{ user.phone_number }}</div>
+  </header>
+
+  <section>
+    <h2 class="section-title">Resumo</h2>
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <div class="label">Treinos concluídos</div>
+        <div class="value">{{ stats.total_sessions }}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">Séries registradas</div>
+        <div class="value">{{ stats.total_sets }}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">Volume total</div>
+        <div class="value">{{ "{:,}".format(stats.total_volume_kg).replace(",", ".") }}<span class="unit">kg</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">Último treino</div>
+        <div class="value">
+          {% if stats.days_since_last is none %}
+            —
+          {% elif stats.days_since_last == 0 %}
+            Hoje
+          {% else %}
+            {{ stats.days_since_last }}<span class="unit">{{ "dia" if stats.days_since_last == 1 else "dias" }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if not recent_sessions %}
+  <section>
+    <div class="empty-state">Nenhum treino concluído ainda. Assim que você finalizar uma sessão, seus resultados aparecem aqui. 💪</div>
+  </section>
+  {% else %}
+
+  <section>
+    <h2 class="section-title">Progresso por exercício</h2>
+    {% for ex in exercises_progress %}
+    <div class="exercise-card">
+      <div class="top-row">
+        <div class="name">{{ ex.name }}</div>
+        <div class="best">{{ ex.points[-1].weight_kg | round(1) }}kg mais recente</div>
+      </div>
+      <canvas data-chart="{{ loop.index0 }}"></canvas>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section>
+    <h2 class="section-title">Treinos recentes</h2>
+    {% for s in recent_sessions %}
+    <div class="session-card">
+      <div class="top-row">
+        <div class="plan-name">{{ s.plan_name }}</div>
+        <div class="date">{{ s.date.strftime("%d/%m/%Y") }}</div>
+      </div>
+      {% for ex in s.exercises %}
+      <div class="exercise-row">
+        <span class="name">{{ ex.name }}</span>
+        <span>{{ ex.sets | length }}x — {{ ex.sets | map(attribute="weight_kg") | max | round(1) }}kg</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+
+  {% endif %}
+
+  <footer>Dados de {{ user.phone_number }} · gerado agora</footer>
+</div>
+
+<script>
+  const EXERCISES = {{ exercises_progress | tojson }};
+
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const accentWash = getComputedStyle(document.documentElement).getPropertyValue('--accent-wash').trim();
+  const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface-2').trim();
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--surface-3').trim();
+  const mutedText = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+
+  document.querySelectorAll('canvas[data-chart]').forEach((canvas) => {
+    const idx = Number(canvas.dataset.chart);
+    const ex = EXERCISES[idx];
+    if (!ex) return;
+
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: ex.points.map(p => p.label),
+        datasets: [{
+          data: ex.points.map(p => p.weight_kg),
+          borderColor: accent,
+          backgroundColor: accentWash,
+          borderWidth: 2,
+          pointRadius: ex.points.length > 1 ? 3 : 4,
+          pointBackgroundColor: accent,
+          pointBorderColor: surface,
+          pointBorderWidth: 2,
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: surface,
+          titleColor: mutedText,
+          bodyColor: '#F5F5EF',
+          borderColor: gridColor,
+          borderWidth: 1,
+          callbacks: { label: (ctx) => `${ctx.parsed.y}kg` },
+        }},
+        scales: {
+          x: { display: false },
+          y: { display: false, beginAtZero: false },
+        },
+        elements: { line: { capBezierPoints: true } },
+      },
+    });
+  });
+</script>
+</body>
+</html>
