@@ -4,9 +4,9 @@ leitura, sem LLM nenhuma no meio: tudo vem direto de consultas no banco.
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
-from .models import User, WorkoutSession, WorkoutSet
+from .models import Plan, User, WorkoutSession, WorkoutSet
 
 PODIUM_SIZE = 3
 FREE_TRAINING_LABEL = "Treino livre"
@@ -33,9 +33,16 @@ def _format_relative_date(dt: datetime) -> str:
 
 
 def build_dashboard_context(db: Any, user: User) -> dict:
+    # sessões de plano excluído (archived_at preenchido) somem do dashboard junto com suas séries;
+    # treino livre (sem plano) continua aparecendo
     sessions = db.scalars(
         select(WorkoutSession)
-        .where(WorkoutSession.user_id == user.id, WorkoutSession.ended_at.is_not(None))
+        .outerjoin(Plan, Plan.id == WorkoutSession.plan_id)
+        .where(
+            WorkoutSession.user_id == user.id,
+            WorkoutSession.ended_at.is_not(None),
+            or_(WorkoutSession.plan_id.is_(None), Plan.archived_at.is_(None)),
+        )
         .order_by(WorkoutSession.started_at.desc())
     ).all()
 

@@ -6,6 +6,8 @@ from google.genai import errors, types
 
 from pydantic import BaseModel
 
+from ..llm_usage import record_gemini
+
 logger = logging.getLogger("chatbot-pidop")
 
 DEFAULT_MODEL = "gemini-flash-lite-latest"
@@ -46,6 +48,7 @@ class GeminiClient:
                     contents=contents,
                     config=config,
                 )
+                record_gemini("shared.generate", response)
                 return response.text
             except errors.ServerError:
                 if attempt == self._attempts - 1:

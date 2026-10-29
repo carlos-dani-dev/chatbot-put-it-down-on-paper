@@ -7,6 +7,7 @@ from google import genai
 from google.genai import types
 
 from agent.config import settings
+from agent.llm_usage import record_gemini
 from agent.shared import _fix_whatsapp_bold, enter_idle, idle_menu
 from agent.repos import session_repo
 from agent.schemas.replies import TextReply
@@ -114,6 +115,8 @@ def handle(db, user, text, button_id=None):
 
         response = client.models.generate_content(model=_MODEL, contents=contents, config=config)
 
+        record_gemini("session", response)
+
         candidate = response.candidates[0] if response.candidates else None
         parts = candidate.content.parts if (candidate and candidate.content and candidate.content.parts) else []
         function_calls = [p.function_call for p in parts if p.function_call is not None]
@@ -162,6 +165,7 @@ def handle(db, user, text, button_id=None):
                     temperature=_TEMPERATURE,
                 ),
             )
+            record_gemini("session.closing", closing)
             final_text = _fix_whatsapp_bold(_compose((closing.text or ""), "🎉 Treino finalizado!"))
             logger.info("agent.session final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return TextReply(final_text), next_state

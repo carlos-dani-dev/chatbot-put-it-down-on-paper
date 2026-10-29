@@ -27,6 +27,7 @@ from agent.repos.user_repo import get_or_create_user
 from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply
 
 from .dashboard import build_dashboard_context
+from .llm_usage import end_turn, start_turn
 from .router import handle_message
 from .signing import verify_result_link
 
@@ -69,6 +70,14 @@ async def _read_body(request: Request):
 
 
 def _process(from_number: str, text: str | None, button_id: str | None = None, message_id: str | None = None):
+    start_turn(from_number)
+    try:
+        return _process_turn(from_number, text, button_id, message_id)
+    finally:
+        end_turn()
+
+
+def _process_turn(from_number: str, text: str | None, button_id: str | None, message_id: str | None):
     with SessionLocal.begin() as db:
         user = get_or_create_user(db, from_number)
         last_seen = user.last_message_at

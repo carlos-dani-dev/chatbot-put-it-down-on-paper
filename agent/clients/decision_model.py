@@ -19,6 +19,8 @@ from ai.ops.experimental import (
     evaluate,
 )
 
+from ..llm_usage import record_openrouter
+
 logger = logging.getLogger("chatbot-pidop")
 
 DEFAULT_MODEL = "typesafe-ai/jev"
@@ -126,7 +128,9 @@ class MercuryDecideClient:
             try:
                 response = requests.post(self.BASE_URL, headers=headers, json=payload, timeout=30)
                 response.raise_for_status()
-                data = response.json()["answers"][_KEY]
+                body = response.json()
+                record_openrouter("decider", self._model, body.get("usage"))
+                data = body["answers"][_KEY]
                 return _ANSWER_TYPES[data["type"]].model_validate(data)
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError) as erro:
                 ultima = attempt == self._attempts - 1

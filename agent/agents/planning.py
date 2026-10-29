@@ -5,6 +5,7 @@ from google import genai
 from google.genai import types
 
 from agent.config import settings
+from agent.llm_usage import record_gemini
 from agent.shared import _fix_whatsapp_bold, enter_idle, enter_session_setup
 from agent.schemas.replies import TextReply
 
@@ -82,6 +83,7 @@ def handle(db, user, text, button_id=None):
             tools=[types.Tool(function_declarations=declarations)],
         )
         response = client.models.generate_content(model=_MODEL, contents=contents, config=config)
+        record_gemini("planning", response)
         candidate = response.candidates[0] if response.candidates else None
         parts = candidate.content.parts if (candidate and candidate.content and candidate.content.parts) else []
         function_calls = [p.function_call for p in parts if p.function_call is not None]
@@ -130,6 +132,7 @@ def handle(db, user, text, button_id=None):
                 contents=contents,
                 config=types.GenerateContentConfig(system_instruction=_system_prompt(ctx), temperature=_TEMPERATURE),
             )
+            record_gemini("planning.closing", closing)
             final_text = _fix_whatsapp_bold((closing.text or "").strip() or "✅ Pronto!")
             logger.info("agent.planning final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return enter_idle(db, user, TextReply(final_text))
