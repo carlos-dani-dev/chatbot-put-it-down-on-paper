@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Seus resultados</title>
+<title>Arnaldo · Seus resultados</title>
+<link rel="icon" href="/static/arnaldo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="/static/chart.umd.min.js"></script>
 <style>
   :root {
     color-scheme: dark;
@@ -19,13 +20,15 @@
     --text-muted: #6B7A91;
     --accent: #0EA5A0;
     --accent-bright: #38E8DC;
-    --accent-wash: rgba(14, 165, 160, 0.16);
+    --accent-bar: rgba(14, 165, 160, 0.45);
+    --good: #22C55E;
     --podium-gold: #D99A2B;
     --podium-silver: #9AA7B8;
     --podium-bronze: #B5673A;
   }
 
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
 
   html, body {
     margin: 0;
@@ -36,48 +39,82 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .page {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 20px 16px 48px;
-  }
+  .page { max-width: 480px; margin: 0 auto; padding: 16px 16px 48px; }
 
   /* ---------- top bar ---------- */
   .topbar {
-    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 48px 1fr 48px;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    background: var(--surface-1);
+    padding: 6px 0 14px;
   }
-
-  .icon-btn {
-    width: 38px;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .menu-btn {
+    width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
     color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 10px;
   }
-
+  .menu-btn:active { background: var(--surface-2); }
   .wordmark {
+    text-align: center;
     font-family: 'Bebas Neue', sans-serif;
     font-style: italic;
-    font-size: 26px;
-    letter-spacing: 0.03em;
-    color: var(--text-primary);
+    font-size: 32px;
+    letter-spacing: 0.04em;
   }
+  .logo { justify-self: end; width: 48px; height: 48px; object-fit: contain; }
+
+  /* ---------- drawer menu ---------- */
+  #menu-toggle { display: none; }
+  .drawer-overlay {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .drawer {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 30;
+    width: min(280px, 80vw);
+    background: var(--surface-2);
+    border-right: 1px solid var(--surface-3);
+    padding: 24px 20px;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  #menu-toggle:checked ~ .drawer-overlay { opacity: 1; pointer-events: auto; }
+  #menu-toggle:checked ~ .drawer { transform: translateX(0); }
+  .drawer-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .drawer-head img { width: 44px; height: 44px; object-fit: contain; }
+  .drawer-head .title { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 0.04em; }
+  .drawer-head .sub { font-size: 11px; color: var(--text-muted); }
+  .drawer a {
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .drawer a:active, .drawer a:hover { background: var(--surface-3); }
+  .drawer .foot { margin-top: auto; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
   /* ---------- section titles ---------- */
   h2.section-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     letter-spacing: 0.12em;
     color: var(--text-secondary);
-    margin: 28px 0 10px;
+    margin: 26px 0 10px;
     text-align: center;
+    scroll-margin-top: 80px;
   }
 
-  /* ---------- card shell ---------- */
   .card {
     background: var(--surface-2);
     border: 1px solid var(--surface-3);
@@ -88,40 +125,20 @@
   /* ---------- treino mais recente ---------- */
   .last-session-card > summary { list-style: none; cursor: pointer; }
   .last-session-card > summary::-webkit-details-marker { display: none; }
-
-  .last-session-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
+  .last-session-row { display: flex; align-items: center; gap: 12px; }
   .bubble-icon {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+    width: 40px; height: 40px; min-width: 40px;
     border-radius: 50%;
     background: var(--surface-3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
+    display: flex; align-items: center; justify-content: center;
   }
-
   .last-session-row .info { flex: 1; min-width: 0; }
   .last-session-row .info .date { font-weight: 700; font-size: 15px; }
   .last-session-row .info .plan { font-size: 13px; color: var(--text-secondary); }
-
-  .divider-v {
-    width: 1px;
-    align-self: stretch;
-    background: var(--surface-3);
-  }
-
+  .divider-v { width: 1px; align-self: stretch; background: var(--surface-3); }
   .volume-chip {
     flex: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex; align-items: center; gap: 8px;
     background: var(--surface-3);
     border-radius: 999px;
     padding: 8px 12px;
@@ -129,25 +146,13 @@
     font-size: 14px;
     white-space: nowrap;
   }
-  .volume-chip .chevron { transition: transform 0.15s ease; color: var(--text-secondary); }
+  .chevron { transition: transform 0.15s ease; color: var(--text-secondary); }
   .last-session-card[open] .volume-chip .chevron { transform: rotate(90deg); }
-
-  .last-session-detail {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--surface-3);
-  }
-  .last-session-detail .row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    padding: 4px 0;
-    color: var(--text-secondary);
-  }
+  .last-session-detail { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface-3); }
+  .last-session-detail .row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: var(--text-secondary); }
   .last-session-detail .row .name { color: var(--text-primary); }
 
   /* ---------- tabs ---------- */
-  .tabs { margin-top: 24px; }
   .tab-input { display: none; }
   .tab-labels { display: flex; gap: 4px; background: var(--surface-2); border-radius: 14px 14px 0 0; padding: 6px 6px 0; }
   .tab-labels label {
@@ -156,88 +161,74 @@
     padding: 12px 8px;
     border-radius: 12px 12px 0 0;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     letter-spacing: 0.04em;
     color: var(--text-secondary);
     cursor: pointer;
   }
   .tab-panel {
     display: none;
-    background: var(--surface-1);
     border: 1px solid var(--surface-3);
     border-top: none;
     border-radius: 0 0 18px 18px;
-    padding: 16px;
+    padding: 14px;
   }
   .tabs.single .tab-panel { display: block; border-radius: 18px; border-top: 1px solid var(--surface-3); }
 
   /* ---------- exercise cards ---------- */
-  .exercise-featured {
+  .exercise-featured, details.exercise-collapsed {
     background: var(--surface-2);
     border: 1px solid var(--surface-3);
     border-radius: 16px;
-    padding: 16px;
     margin-bottom: 10px;
   }
-  .exercise-featured .name {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 19px;
-    letter-spacing: 0.03em;
-  }
-  .exercise-featured .tag {
+  .exercise-featured { padding: 16px; }
+  .exercise-featured .name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.03em; }
+  .ex-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 2px 0 12px; font-size: 12px; }
+  .ex-meta .tag { color: var(--accent-bright); font-weight: 600; }
+  .ex-meta .delta { color: var(--text-secondary); }
+  .ex-meta .delta.up { color: var(--good); font-weight: 600; }
+  .ex-body { display: flex; align-items: center; gap: 14px; }
+  .chart-box { position: relative; flex: 1; min-width: 0; height: 96px; overflow: hidden; }
+  .chart-hint {
+    flex: 1;
     font-size: 12px;
-    color: var(--accent-bright);
-    margin-bottom: 10px;
+    color: var(--text-muted);
+    border: 1px dashed var(--surface-3);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
   }
-  .exercise-featured .body {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .exercise-featured canvas { flex: 1; height: 90px !important; width: 100% !important; }
-  .exercise-featured .stat { text-align: right; flex: none; padding-left: 14px; border-left: 1px solid var(--surface-3); }
-  .exercise-featured .stat .value { font-size: 26px; font-weight: 800; white-space: nowrap; }
-  .exercise-featured .stat .value .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
-  .exercise-featured .stat .label { font-size: 10px; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 2px; }
+  .stat { text-align: right; flex: none; padding-left: 14px; border-left: 1px solid var(--surface-3); }
+  .stat .value { font-size: 26px; font-weight: 800; white-space: nowrap; }
+  .stat .value .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-left: 2px; }
+  .stat .label { font-size: 10px; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 2px; }
 
-  details.exercise-collapsed {
-    background: var(--surface-2);
-    border: 1px solid var(--surface-3);
-    border-radius: 16px;
-    margin-bottom: 10px;
-    overflow: hidden;
-  }
+  details.exercise-collapsed { overflow: hidden; }
   details.exercise-collapsed > summary {
     list-style: none;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
+    font-size: 17px;
     letter-spacing: 0.03em;
   }
   details.exercise-collapsed > summary::-webkit-details-marker { display: none; }
-  details.exercise-collapsed > summary .chevron { color: var(--text-secondary); transition: transform 0.15s ease; }
   details.exercise-collapsed[open] > summary .chevron { transform: rotate(90deg); }
-  details.exercise-collapsed .body {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 0 16px 16px;
-  }
-  details.exercise-collapsed canvas { flex: 1; height: 80px !important; width: 100% !important; }
-  details.exercise-collapsed .stat { text-align: right; flex: none; padding-left: 14px; border-left: 1px solid var(--surface-3); }
-  details.exercise-collapsed .stat .value { font-size: 22px; font-weight: 800; white-space: nowrap; }
-  details.exercise-collapsed .stat .label { font-size: 10px; letter-spacing: 0.08em; color: var(--text-muted); }
+  details.exercise-collapsed .inner { padding: 0 16px 16px; }
 
   /* ---------- podium ---------- */
-  .podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 8px; height: 150px; }
+  .podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; height: 170px; }
   .podium-col { flex: 1; max-width: 110px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
-  .podium-col .plan-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; text-align: center; line-height: 1.2; }
-  .podium-bar { width: 100%; border-radius: 10px 10px 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; }
-  .podium-bar .badge { width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.28); color: var(--text-primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
+  .podium-col .plan-label { font-size: 12px; font-weight: 600; margin-bottom: 6px; text-align: center; line-height: 1.2; }
+  .podium-bar { width: 100%; border-radius: 10px 10px 0 0; display: flex; justify-content: center; padding-top: 10px; }
+  .podium-bar .badge {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface-1); color: var(--text-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px;
+  }
   .podium-count { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
 
   .empty-state {
@@ -255,27 +246,66 @@
 </style>
 </head>
 <body>
-<div class="page">
 
-  <div class="topbar">
-    <div class="icon-btn" aria-hidden="true">
-      <svg width="22" height="16" viewBox="0 0 22 16" fill="none"><path d="M0 1h22M0 8h22M0 15h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </div>
-    <div class="wordmark">GYM BRO</div>
-    <div class="icon-btn" style="color: var(--accent-bright);" aria-hidden="true">
-      <svg width="26" height="18" viewBox="0 0 26 18" fill="none">
-        <rect x="0" y="6" width="4" height="6" rx="1.5" fill="currentColor"/>
-        <rect x="22" y="6" width="4" height="6" rx="1.5" fill="currentColor"/>
-        <rect x="4" y="7.5" width="18" height="3" rx="1.5" fill="currentColor"/>
-      </svg>
+{% macro exercise_body(ex, chart_id) %}
+  <div class="ex-meta">
+    <span class="tag">{{ "Recorde pessoal" if ex.is_pr else "Último registro" }}</span>
+    {% if ex.points | length > 1 %}
+      {% if ex.delta_kg > 0 %}
+      <span class="delta up">▲ +{{ ex.delta_kg | round(1) }}kg desde {{ ex.first_label }}</span>
+      {% elif ex.delta_kg < 0 %}
+      <span class="delta">▼ {{ ex.delta_kg | round(1) }}kg desde {{ ex.first_label }}</span>
+      {% else %}
+      <span class="delta">= mesma carga desde {{ ex.first_label }}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+  <div class="ex-body">
+    {% if ex.points | length > 1 %}
+    <div class="chart-box"><canvas data-chart-id="{{ chart_id }}" role="img" aria-label="Evolução da carga de {{ ex.name }}"></canvas></div>
+    {% else %}
+    <div class="chart-hint">Só 1 treino registrado — a evolução aparece a partir do 2º.</div>
+    {% endif %}
+    <div class="stat">
+      <div class="value">{{ ex.best_label }}<span class="unit">kg</span></div>
+      <div class="label">MELHOR CARGA</div>
     </div>
   </div>
+{% endmacro %}
+
+<input type="checkbox" id="menu-toggle">
+<label for="menu-toggle" class="drawer-overlay" aria-hidden="true"></label>
+<nav class="drawer" aria-label="Menu">
+  <div class="drawer-head">
+    <img src="/static/arnaldo.png" alt="">
+    <div>
+      <div class="title">ARNALDO</div>
+      <div class="sub">{{ user.phone_number }}</div>
+    </div>
+  </div>
+  {% if has_data %}
+  <a href="#recente">📅 Treino mais recente</a>
+  <a href="#progresso">📈 Progresso por exercício</a>
+  {% if podium %}<a href="#ranking">🏆 Treinos mais feitos</a>{% endif %}
+  {% endif %}
+  <div class="foot">Este link é pessoal e expira em alguns minutos. Peça um novo no WhatsApp quando quiser ver de novo. 💪</div>
+</nav>
+
+<div class="page">
+
+  <header class="topbar">
+    <label for="menu-toggle" class="menu-btn" aria-label="Abrir menu">
+      <svg width="22" height="16" viewBox="0 0 22 16" fill="none"><path d="M0 1h22M0 8h22M0 15h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </label>
+    <div class="wordmark">ARNALDO</div>
+    <img class="logo" src="/static/arnaldo.png" alt="Arnaldo">
+  </header>
 
   {% if not has_data %}
   <div class="empty-state">Nenhum treino concluído ainda. Assim que você finalizar uma sessão, seus resultados aparecem aqui. 💪</div>
   {% else %}
 
-  <h2 class="section-title">TREINO MAIS RECENTE</h2>
+  <h2 class="section-title" id="recente">TREINO MAIS RECENTE</h2>
   <details class="card last-session-card">
     <summary class="last-session-row">
       <div class="bubble-icon">
@@ -299,6 +329,7 @@
     </div>
   </details>
 
+  <h2 class="section-title" id="progresso">PROGRESSO POR EXERCÍCIO</h2>
   <div class="tabs {{ 'single' if plans | length <= 1 else '' }}">
     {% if plans | length > 1 %}
     {% for p in plans %}
@@ -312,30 +343,19 @@
     {% endif %}
 
     {% for p in plans %}
-    <div class="tab-panel" data-for="{{ loop.index0 }}">
+    {% set plan_idx = loop.index0 %}
+    <div class="tab-panel" data-for="{{ plan_idx }}">
       {% for ex in p.exercises %}
+        {% set chart_id = plan_idx ~ "-" ~ loop.index0 %}
         {% if loop.first %}
         <div class="exercise-featured">
           <div class="name">{{ ex.name | upper }}</div>
-          <div class="tag">{{ "Recorde pessoal" if ex.is_pr else "Último registro" }}</div>
-          <div class="body">
-            <canvas data-chart-id="{{ loop.index0 }}::{{ p.name | replace(' ', '') }}"></canvas>
-            <div class="stat">
-              <div class="value">{{ ex.best_label }}<span class="unit">kg</span></div>
-              <div class="label">MELHOR CARGA</div>
-            </div>
-          </div>
+          {{ exercise_body(ex, chart_id) }}
         </div>
         {% else %}
         <details class="exercise-collapsed">
           <summary>{{ ex.name | upper }}<svg class="chevron" width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-          <div class="body">
-            <canvas data-chart-id="{{ loop.index0 }}::{{ p.name | replace(' ', '') }}"></canvas>
-            <div class="stat">
-              <div class="value">{{ ex.best_label }}<span class="unit">kg</span></div>
-              <div class="label">MELHOR CARGA</div>
-            </div>
-          </div>
+          <div class="inner">{{ exercise_body(ex, chart_id) }}</div>
         </details>
         {% endif %}
       {% endfor %}
@@ -345,26 +365,24 @@
     <style>
       {% for p in plans %}
       #tab-{{ loop.index0 }}:checked ~ .tab-panel[data-for="{{ loop.index0 }}"] { display: block; }
-      #tab-{{ loop.index0 }}:checked ~ .tab-labels label[for="tab-{{ loop.index0 }}"] { background: #fff; color: #111; border-radius: 12px; }
+      #tab-{{ loop.index0 }}:checked ~ .tab-labels label[for="tab-{{ loop.index0 }}"] { background: var(--text-primary); color: var(--surface-1); border-radius: 12px; }
       {% endfor %}
     </style>
   </div>
 
   {% if podium %}
-  <h2 class="section-title">TREINOS MAIS FEITOS</h2>
+  <h2 class="section-title" id="ranking">TREINOS MAIS FEITOS</h2>
   <div class="podium">
-    {% set order = [1, 0, 2] if podium | length == 3 else range(podium | length) %}
+    {% set order = [1, 0, 2] if podium | length == 3 else ([1, 0] if podium | length == 2 else [0]) %}
     {% for i in order %}
-      {% if i < podium | length %}
       {% set col = podium[i] %}
       <div class="podium-col">
         <div class="plan-label">{{ col.name }}</div>
         <div class="podium-bar" style="height: {{ col.height_pct }}%; background: {{ 'var(--podium-gold)' if col.rank == 1 else ('var(--podium-silver)' if col.rank == 2 else 'var(--podium-bronze)') }};">
           <div class="badge">{{ col.rank }}</div>
         </div>
-        <div class="podium-count">{{ col.count }}x</div>
+        <div class="podium-count">{{ col.count }} {{ "treino" if col.count == 1 else "treinos" }}</div>
       </div>
-      {% endif %}
     {% endfor %}
   </div>
   {% endif %}
@@ -374,71 +392,93 @@
   <footer>Dados de {{ user.phone_number }} · gerado agora</footer>
 </div>
 
+<script>
+  // fecha o menu ao tocar num item
+  document.querySelectorAll('.drawer a').forEach((a) => {
+    a.addEventListener('click', () => { document.getElementById('menu-toggle').checked = false; });
+  });
+</script>
+
 {% if has_data %}
 <script>
   const PLANS = {{ plans | tojson }};
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const charts = new Map();
 
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  const accentBright = getComputedStyle(document.documentElement).getPropertyValue('--accent-bright').trim();
-  const accentWash = getComputedStyle(document.documentElement).getPropertyValue('--accent-wash').trim();
-  const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface-2').trim();
-  const mutedText = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-
-  document.querySelectorAll('canvas[data-chart-id]').forEach((canvas) => {
-    const [exIdxRaw, planKey] = canvas.dataset.chartId.split('::');
-    const plan = PLANS.find(p => p.name.replace(/\s+/g, '') === planKey);
-    if (!plan) return;
-    const ex = plan.exercises[Number(exIdxRaw)];
+  function initChart(canvas) {
+    if (charts.has(canvas)) return;
+    const [planIdx, exIdx] = canvas.dataset.chartId.split('-').map(Number);
+    const ex = PLANS[planIdx]?.exercises[exIdx];
     if (!ex) return;
 
     const weights = ex.points.map(p => p.weight_kg);
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    const pad = Math.max((max - min) * 0.25, 2);
     const lastIdx = weights.length - 1;
 
-    new Chart(canvas, {
+    charts.set(canvas, new Chart(canvas, {
       data: {
         labels: ex.points.map(p => p.label),
         datasets: [
           {
-            type: 'bar',
-            data: weights,
-            backgroundColor: accentWash,
-            borderRadius: 4,
-            barThickness: 14,
-            order: 2,
-          },
-          {
             type: 'line',
             data: weights,
-            borderColor: accentBright,
-            backgroundColor: accentBright,
+            borderColor: css('--accent-bright'),
             borderWidth: 2,
             tension: 0.3,
-            pointRadius: (ctx) => ctx.dataIndex === lastIdx ? 5 : 0,
-            pointBackgroundColor: accentBright,
-            pointBorderColor: surface,
+            pointRadius: (c) => c.dataIndex === lastIdx ? 5 : 3,
+            pointBackgroundColor: css('--accent-bright'),
+            pointBorderColor: css('--surface-2'),
             pointBorderWidth: 2,
             order: 1,
+          },
+          {
+            type: 'bar',
+            data: weights,
+            backgroundColor: css('--accent-bar'),
+            borderRadius: 4,
+            maxBarThickness: 16,
+            order: 2,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 500 },
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: surface,
-            titleColor: mutedText,
-            bodyColor: '#F5F5EF',
-            borderColor: accent,
+            filter: (item) => item.datasetIndex === 0,
+            backgroundColor: css('--surface-1'),
+            titleColor: css('--text-muted'),
+            bodyColor: css('--text-primary'),
+            borderColor: css('--surface-3'),
             borderWidth: 1,
-            callbacks: { label: (ctx) => `${ctx.parsed.y}kg` },
+            displayColors: false,
+            callbacks: { label: (c) => `${c.parsed.y}kg` },
           },
         },
-        scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
+        scales: {
+          x: { display: false },
+          y: { display: false, min: Math.max(0, min - pad), max: max + pad },
+        },
       },
+    }));
+  }
+
+  // só desenha gráficos visíveis — canvas dentro de aba/acordeão escondido nasce com tamanho zero
+  function initVisible() {
+    document.querySelectorAll('canvas[data-chart-id]').forEach((c) => {
+      if (c.offsetParent !== null) initChart(c);
     });
-  });
+  }
+
+  initVisible();
+  document.querySelectorAll('.tab-input').forEach((r) => r.addEventListener('change', () => requestAnimationFrame(initVisible)));
+  document.querySelectorAll('details').forEach((d) => d.addEventListener('toggle', () => requestAnimationFrame(initVisible)));
 </script>
 {% endif %}
 </body>

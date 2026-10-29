@@ -108,6 +108,8 @@ def build_dashboard_context(db: Any, user: User) -> dict:
             ex["best_kg"] = best
             ex["best_label"] = _format_compact_kg(best)
             ex["is_pr"] = ex["points"][-1]["weight_kg"] >= best
+            ex["delta_kg"] = round(ex["points"][-1]["weight_kg"] - ex["points"][0]["weight_kg"], 1)
+            ex["first_label"] = ex["points"][0]["label"]
         plans.append({"name": plan_name, "exercises": exercises})
 
     plans.sort(key=lambda p: plan_session_count[p["name"]], reverse=True)

@@ -10,6 +10,7 @@ from agent.schemas.replies import CtaUrlReply, TextReply
 
 from ..tools import idle as tools_mod
 from ..context.idle import build_context
+from . import planning as planning_agent
 
 logger = logging.getLogger("agent.idle")
 
@@ -27,7 +28,8 @@ def _system_prompt(ctx) -> str:
         "Regras importantes:\n"
         "- Pra se referir a um plano específico, use SEMPRE o plan_id exato oferecido pela "
         "ferramenta — nunca invente um ID.\n"
-        "- Se ele quer planejar um treino novo, chame start_planning.\n"
+        "- Se ele quer planejar/criar um treino NOVO, chame start_planning.\n"
+        "- Se ele quer editar, excluir ou gerenciar um plano que JÁ EXISTE, chame manage_plans.\n"
         "- Se ele quer começar/registrar um treino agora, chame start_session.\n"
         "- Se ele perguntar quais planos tem, chame list_plans.\n"
         "- Se ele perguntar os exercícios de um plano específico (ou como está indo um plano), "
@@ -75,6 +77,10 @@ def handle(db, user, text, button_id=None):
             return enter_planning(db, user)
         if fc.name == "start_session":
             return enter_session_setup(db, user)
+        if fc.name == "manage_plans":
+            logger.info("agent.idle tool_call user=%s name=%s args={}", user.phone_number, fc.name)
+            user.state_data = {}
+            return planning_agent.handle(db, user, text)
         if fc.name == "mostrar_resultados":
             result = tools_mod.mostrar_resultados(db, user, ctx)
             logger.info("agent.idle tool_result user=%s name=%s result=%s", user.phone_number, fc.name, result)

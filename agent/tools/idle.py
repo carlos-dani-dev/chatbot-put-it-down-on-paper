@@ -18,6 +18,10 @@ def start_planning(db: Any, user: User, ctx: IdleContext) -> dict:
     return {"ok": True, "next_state": "planning"}
 
 
+def manage_plans(db: Any, user: User, ctx: IdleContext) -> dict:
+    return {"ok": True, "next_state": "planning"}
+
+
 def start_session(db: Any, user: User, ctx: IdleContext) -> dict:
     return {"ok": True, "next_state": "session_setup"}
 
@@ -49,6 +53,7 @@ def mostrar_resultados(db: Any, user: User, ctx: IdleContext) -> dict:
 TOOL_IMPLS = {
     "start_planning": start_planning,
     "start_session": start_session,
+    "manage_plans": manage_plans,
     "list_plans": list_plans,
     "list_plan_exercises": list_plan_exercises,
     "mostrar_resultados": mostrar_resultados,
@@ -59,7 +64,7 @@ def build_declarations(ctx: IdleContext) -> list[types.FunctionDeclaration]:
     decls = [
         types.FunctionDeclaration(
             name="start_planning",
-            description="O usuário quer planejar/criar um plano de treino novo.",
+            description="O usuário quer planejar/criar um plano de treino NOVO, do zero.",
             parameters=types.Schema(type="OBJECT", properties={}),
         ),
         types.FunctionDeclaration(
@@ -87,5 +92,13 @@ def build_declarations(ctx: IdleContext) -> list[types.FunctionDeclaration]:
                 properties={"plan_id": types.Schema(type="STRING", enum=ctx.plan_ids())},
                 required=["plan_id"],
             ),
+        ))
+        decls.append(types.FunctionDeclaration(
+            name="manage_plans",
+            description=(
+                "O usuário quer editar, excluir ou gerenciar de algum jeito um plano de treino "
+                "que JÁ EXISTE (ex.: 'exclua o plano de peito') — não é pra criar um plano novo."
+            ),
+            parameters=types.Schema(type="OBJECT", properties={}),
         ))
     return decls
