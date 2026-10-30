@@ -10,6 +10,17 @@ import requests
 BASE_URL = "https://api.mercadopago.com"
 
 
+class MercadoPagoError(Exception):
+    """Erro da API com a explicação que o Mercado Pago devolve no corpo (o raise_for_status a descarta)."""
+
+
+def _check(response: requests.Response) -> dict:
+    if not response.ok:
+        raise MercadoPagoError(f"HTTP {response.status_code} em {response.request.method} "
+                               f"{response.url}: {response.text[:1000]}")
+    return response.json()
+
+
 @dataclass
 class PixPayment:
     id: str
@@ -69,8 +80,7 @@ class MercadoPagoClient:
             "X-Idempotency-Key": idempotency_key,
         }
         response = requests.post(f"{BASE_URL}/v1/payments", json=payload, headers=headers, timeout=30)
-        response.raise_for_status()
-        data = response.json()
+        data = _check(response)
         transaction = data["point_of_interaction"]["transaction_data"]
         return PixPayment(
             id=str(data["id"]),
@@ -85,8 +95,7 @@ class MercadoPagoClient:
             headers={"Authorization": f"Bearer {self._access_token}"},
             timeout=15,
         )
-        response.raise_for_status()
-        data = response.json()
+        data = _check(response)
         approved = data.get("date_approved")
         return PaymentStatus(
             id=str(data["id"]),
