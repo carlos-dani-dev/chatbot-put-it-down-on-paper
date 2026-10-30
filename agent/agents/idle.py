@@ -15,6 +15,7 @@ from agent.shared import (
     enter_session_setup,
     idle_menu,
 )
+from agent import billing
 from agent.schemas.replies import CtaUrlReply, TextReply
 
 from ..tools import idle as tools_mod
@@ -32,7 +33,8 @@ def _system_prompt(ctx) -> str:
     plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     return (
         arnaldo_header("no menu principal.", IDLE_FEATURES)
-        + f"Planos de treino salvos do usuário: {plans_line}\n\n"
+        + f"Plano de assinatura do usuário: {ctx.limits.describe()}\n"
+        f"Planos de treino salvos do usuário: {plans_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
         "- Pra se referir a um plano específico, use SEMPRE o plan_id exato oferecido pela "
@@ -44,6 +46,7 @@ def _system_prompt(ctx) -> str:
         "- Se ele perguntar os exercícios de um plano específico (ou como está indo um plano), "
         "chame list_plan_exercises.\n"
         "- Se ele quiser ver resultados/progresso/histórico de treinos, chame mostrar_resultados.\n"
+        "- Se ele quiser assinar, contratar ou pagar o plano Pro, chame assinar_pro.\n"
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou — nunca invente "
         "nomes de planos ou exercícios que não vieram de um resultado de ferramenta.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
@@ -86,6 +89,9 @@ def handle(db, user, text, button_id=None):
         logger.info("agent.idle tool_call user=%s name=%s args=%s", user.phone_number, fc.name, args)
 
         if fc.name == "start_planning":
+            if ctx.limits.plans_full:
+                logger.info("agent.idle limite de planos user=%s", user.phone_number)
+                return TextReply(billing.plans_full_message([p.name for p in ctx.plans])), "idle"
             return enter_planning(db, user)
         if fc.name == "start_session":
             return enter_session_setup(db, user)
@@ -93,6 +99,11 @@ def handle(db, user, text, button_id=None):
             logger.info("agent.idle tool_call user=%s name=%s args={}", user.phone_number, fc.name)
             user.state_data = {}
             return planning_agent.handle(db, user, text)
+        if fc.name == "assinar_pro":
+            result = tools_mod.assinar_pro(db, user, ctx)
+            logger.info("agent.idle tool_result user=%s name=%s result=%s", user.phone_number, fc.name,
+                        {k: v for k, v in result.items() if k != "qr_code"})
+            return billing.pro_charge_reply(result), "idle"
         if fc.name == "mostrar_resultados":
             result = tools_mod.mostrar_resultados(db, user, ctx)
             logger.info("agent.idle tool_result user=%s name=%s result=%s", user.phone_number, fc.name, result)

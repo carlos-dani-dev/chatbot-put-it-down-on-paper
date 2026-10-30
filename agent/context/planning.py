@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+from agent.billing import PlanLimits, limits_for
 from agent.models import User
 from agent.repos import plan_repo
 from agent.shared import _recent_history
@@ -19,6 +20,7 @@ class PlanningContext:
     draft: dict | None  # {"name": str, "items": [{"name", "target_sets"}, ...]}
     pending_action: dict | None
     history: str
+    limits: PlanLimits
 
     def plan_ids(self) -> list[str]:
         return [f"plan:{p.id}" for p in self.plans]
@@ -41,4 +43,5 @@ def build_context(db: Any, user: User) -> PlanningContext:
         draft=state_data.get("plan_draft"),
         pending_action=state_data.get("pending_action"),
         history=_recent_history(db, user),
+        limits=limits_for(db, user),
     )

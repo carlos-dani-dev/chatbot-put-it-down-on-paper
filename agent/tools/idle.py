@@ -4,6 +4,7 @@ from typing import Any
 
 from google.genai import types
 
+from agent import billing
 from agent.config import settings
 from agent.models import User
 from agent.repos import plan_repo
@@ -44,6 +45,10 @@ def list_plan_exercises(db: Any, user: User, ctx: IdleContext, plan_id: str) -> 
     return {"ok": True, "plan_name": info.name, "exercises": items}
 
 
+def assinar_pro(db: Any, user: User, ctx: IdleContext) -> dict:
+    return billing.pro_charge_result(db, user)
+
+
 def mostrar_resultados(db: Any, user: User, ctx: IdleContext) -> dict:
     link = sign_result_link(user.id)
     url = f"{settings.public_base_url}/webhook/dashboard?user_id={link['user_id']}&exp={link['exp']}&sig={link['sig']}"
@@ -57,6 +62,7 @@ TOOL_IMPLS = {
     "list_plans": list_plans,
     "list_plan_exercises": list_plan_exercises,
     "mostrar_resultados": mostrar_resultados,
+    "assinar_pro": assinar_pro,
 }
 
 
@@ -80,6 +86,14 @@ def build_declarations(ctx: IdleContext) -> list[types.FunctionDeclaration]:
         types.FunctionDeclaration(
             name="mostrar_resultados",
             description="Gera um link pra página de resultados/progresso do usuário.",
+            parameters=types.Schema(type="OBJECT", properties={}),
+        ),
+        types.FunctionDeclaration(
+            name="assinar_pro",
+            description=(
+                "O usuário quer assinar/contratar/pagar o plano Pro. Gera um Pix de cobrança "
+                "(não ativa nada: o Pro só é ativado depois que o pagamento for confirmado)."
+            ),
             parameters=types.Schema(type="OBJECT", properties={}),
         ),
     ]

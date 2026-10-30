@@ -24,8 +24,10 @@ from .commands import handle_universal_command
 from agent.models import Base, User
 from agent.repos import chat_message_repo
 from agent.repos.user_repo import get_or_create_user
-from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply
+from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply, MultiTextReply
 
+from . import billing
+from .clients.mercadopago import verify_webhook_signature
 from .dashboard import build_dashboard_context
 from .llm_usage import end_turn, start_turn
 from .router import handle_message
@@ -120,6 +122,9 @@ def _process_and_reply(message):
             provider.send_interactive_list(message.from_number, reply.text, reply.button_label, reply.rows)
         elif isinstance(reply, CtaUrlReply):
             provider.send_cta_url_button(message.from_number, reply.text, reply.button_text, reply.url)
+        elif isinstance(reply, MultiTextReply):
+            for text in reply.texts:
+                provider.send_message(message.from_number, text)
         else:
             provider.send_message(message.from_number, reply.text)
         logger.info(f"[agent] Resposta enviada para {message.from_number}")
@@ -162,6 +167,60 @@ async def receive_wap_message(request: Request, background: BackgroundTasks):
     )
 
     background.add_task(_process_and_reply, message)
+    return PlainTextResponse("", status_code=200)
+
+
+def _notify_pro_activated(activated: billing.ProActivated) -> None:
+    text = (
+        "✅ Pagamento confirmado! Seu *Pro* está ativo até "
+        f"{billing.format_local_time(activated.pro_until)}.\n\n"
+        "Bora treinar? É só pedir pra *Começar um treino* ou *Criar um plano*. 💪"
+    )
+    try:
+        provider.send_message(activated.phone_number, text)
+    except Exception:
+        # fora da janela de 24h do WhatsApp a mensagem livre é recusada — o Pro já está ativo mesmo assim
+        logger.exception(f"[agent] Pro ativado, mas falhou o aviso no WhatsApp para {activated.phone_number}")
+        return
+    with SessionLocal.begin() as db:
+        user = db.get(User, activated.user_id)
+        if user is not None:
+            chat_message_repo.log_message(db, user, "assistant", text)
+
+
+@app.post("/webhook/pix")
+async def pix_webhook(request: Request, background: BackgroundTasks):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    params = request.query_params
+
+    kind = body.get("type") or params.get("type") or params.get("topic")
+    payment_id = str((body.get("data") or {}).get("id") or params.get("data.id") or params.get("id") or "")
+    if kind != "payment" or not payment_id:
+        return PlainTextResponse("", status_code=200)
+
+    if settings.mercadopago_webhook_secret:
+        valid = verify_webhook_signature(
+            settings.mercadopago_webhook_secret,
+            request.headers.get("x-signature", ""),
+            request.headers.get("x-request-id", ""),
+            params.get("data.id") or payment_id,
+        )
+        if not valid:
+            logger.warning(f"[agent] webhook Pix com assinatura inválida payment_id={payment_id}")
+            return PlainTextResponse("assinatura inválida", status_code=401)
+
+    try:
+        with SessionLocal.begin() as db:
+            activated = billing.apply_payment_update(db, payment_id)
+    except Exception:
+        logger.exception(f"[agent] falha ao processar webhook Pix payment_id={payment_id}")
+        return PlainTextResponse("", status_code=500)  # o Mercado Pago reenvia o aviso
+
+    if activated is not None:
+        background.add_task(_notify_pro_activated, activated)
     return PlainTextResponse("", status_code=200)
 
 

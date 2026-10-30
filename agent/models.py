@@ -163,3 +163,25 @@ class WorkoutSet(Base):
 
     session: Mapped["WorkoutSession"] = relationship("WorkoutSession", back_populates="sets")
     exercise: Mapped["Exercise"] = relationship("Exercise")
+
+# --------------------------------------------------------------------------
+# Cobranças Pix do plano Pro. Só o webhook de pagamento muda status/paid_at;
+# o pedido no chat apenas cria a cobrança pendente.
+# --------------------------------------------------------------------------
+class PixCharge(Base):
+    __tablename__ = "pix_charges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    provider: Mapped[str] = mapped_column(String, nullable=False)
+    provider_payment_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)  # pending | approved | expired | cancelled
+    qr_code: Mapped[str] = mapped_column(Text, nullable=False)  # Pix copia e cola
+    ticket_url: Mapped[str | None] = mapped_column(String)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped["User"] = relationship("User")

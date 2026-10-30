@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+from agent.billing import PlanLimits, limits_for
 from agent.models import User
 from agent.repos import plan_repo
 from agent.shared import _recent_history
@@ -17,6 +18,7 @@ class PlanInfo:
 class IdleContext:
     plans: list[PlanInfo]
     history: str
+    limits: PlanLimits
 
     def plan_ids(self) -> list[str]:
         return [f"plan:{p.id}" for p in self.plans]
@@ -36,4 +38,5 @@ def build_context(db: Any, user: User) -> IdleContext:
     return IdleContext(
         plans=[PlanInfo(id=r.id, name=r.name) for r in rows],
         history=_recent_history(db, user),
+        limits=limits_for(db, user),
     )

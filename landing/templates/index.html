@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101720">
+<meta name="description" content="Arnaldo é um agente de IA no WhatsApp que registra seus treinos e controla sua carga por mensagem.">
+<title>Arnaldo.gym.ai · Seu parceiro de treino no WhatsApp</title>
+<link rel="icon" href="/static/arnaldo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: '#101720',
+          card: '#161F2C',
+          line: '#232F42',
+          cream: '#F5F5EF',
+          muted: '#9AA7BD',
+          gym: '#B4BAC4',
+          teal: '#0EA5A0',
+          tealbright: '#38E8DC',
+        },
+        fontFamily: {
+          display: ['"Bebas Neue"', 'sans-serif'],
+          sans: ['Montserrat', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js"></script>
+<style>
+  html { scroll-behavior: smooth; }
+  [v-cloak] { display: none; }
+  section { scroll-margin-top: 72px; }
+</style>
+</head>
+<body class="bg-navy text-cream font-sans antialiased">
+<div id="app" v-cloak>
+
+  <!-- navbar -->
+  <header class="sticky top-0 z-20 bg-navy/90 backdrop-blur border-b border-line">
+    <nav class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="#home" class="flex items-center gap-2">
+        <img src="/static/arnaldo.png" alt="" class="h-9 w-9 object-contain">
+        <span class="font-display italic text-2xl tracking-wide">Arnaldo<span class="text-gym">.gym</span>.ai</span>
+      </a>
+      <ul class="hidden md:flex items-center gap-8 text-sm font-medium">
+        <li v-for="link in links" :key="link.id">
+          <a :href="'#' + link.id" class="transition-colors" :class="active === link.id ? 'text-tealbright' : 'text-muted hover:text-cream'">[[ link.label ]]</a>
+        </li>
+      </ul>
+      <button class="md:hidden h-10 w-10 flex items-center justify-center rounded-lg hover:bg-card" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" aria-label="Menu">
+        <svg width="22" height="16" viewBox="0 0 22 16" fill="none"><path :d="menuOpen ? 'M3 1l16 14M3 15L19 1' : 'M0 1h22M0 8h22M0 15h22'" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </nav>
+    <ul v-if="menuOpen" class="md:hidden border-t border-line px-4 py-2">
+      <li v-for="link in links" :key="link.id">
+        <a :href="'#' + link.id" @click="menuOpen = false" class="block py-3 font-medium" :class="active === link.id ? 'text-tealbright' : 'text-cream'">[[ link.label ]]</a>
+      </li>
+    </ul>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4">
+
+    <!-- home -->
+    <section id="home" class="py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+      <div>
+        <p class="text-tealbright text-sm font-semibold tracking-widest uppercase">Agente de IA no WhatsApp</p>
+        <h1 class="font-display text-6xl md:text-7xl leading-none mt-3">Seu parceiro de treino na palma da mão</h1>
+        <p class="text-muted mt-5 leading-relaxed">O Arnaldo registra suas séries por mensagem e controla sua carga treino a treino. Sem planilha, sem app novo: é só conversar.</p>
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="bg-tealbright text-navy font-bold px-6 py-3 rounded-xl hover:opacity-90 transition">Começar no WhatsApp</a>
+          <a href="#funcionalidades" class="border border-line px-6 py-3 rounded-xl font-semibold hover:bg-card transition">Ver funcionalidades</a>
+        </div>
+      </div>
+
+      <div class="bg-card border border-line rounded-3xl p-5 space-y-3 max-w-sm w-full md:justify-self-end">
+        <div class="flex items-center gap-3 pb-3 border-b border-line">
+          <img src="/static/arnaldo.png" alt="" class="h-10 w-10 object-contain">
+          <div>
+            <div class="font-semibold text-sm">Arnaldo</div>
+            <div class="text-xs text-muted">online</div>
+          </div>
+        </div>
+        <div class="ml-auto w-fit max-w-[85%] bg-teal/30 rounded-2xl rounded-tr-sm px-4 py-2 text-sm">supino 80kg 8 reps, 80kg 6</div>
+        <div class="w-fit max-w-[90%] bg-line rounded-2xl rounded-tl-sm px-4 py-2 text-sm leading-relaxed">
+          <strong>Supino Reto com Barra</strong>: séries 1 a 2 (80kg × 8, 80kg × 6) — progresso 2/3<br>
+          Falta uma! Quer <strong>ver o desempenho anterior</strong>?
+        </div>
+        <div class="ml-auto w-fit max-w-[85%] bg-teal/30 rounded-2xl rounded-tr-sm px-4 py-2 text-sm">como foi da última vez?</div>
+        <div class="w-fit max-w-[90%] bg-line rounded-2xl rounded-tl-sm px-4 py-2 text-sm">Última vez: 77,5kg × 8. Hoje você subiu <span class="text-tealbright font-semibold">+2,5kg</span>.</div>
+      </div>
+    </section>
+
+    <!-- funcionalidades -->
+    <section id="funcionalidades" class="py-16 border-t border-line">
+      <h2 class="font-display text-5xl">Funcionalidades</h2>
+      <p class="text-muted mt-2">Tudo pelo WhatsApp, do primeiro treino ao recorde pessoal.</p>
+      <div class="grid sm:grid-cols-2 gap-4 mt-10">
+        <article v-for="(feature, i) in content.features" :key="feature.title" class="bg-card border border-line rounded-2xl p-6">
+          <span class="font-display text-tealbright text-xl">[[ String(i + 1).padStart(2, '0') ]]</span>
+          <h3 class="font-display text-3xl mt-1">[[ feature.title ]]</h3>
+          <p class="text-muted text-sm mt-2 leading-relaxed">[[ feature.text ]]</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- preço -->
+    <section id="preco" class="py-16 border-t border-line">
+      <h2 class="font-display text-5xl">Preço</h2>
+      <p class="text-muted mt-2">Comece de graça. Evolua quando quiser.</p>
+      <div class="grid sm:grid-cols-2 gap-4 mt-10 max-w-3xl">
+        <article v-for="plan in content.plans" :key="plan.name" class="rounded-2xl p-6 border flex flex-col" :class="plan.highlight ? 'bg-card border-tealbright' : 'bg-card border-line'">
+          <div class="flex items-center justify-between">
+            <h3 class="font-display text-3xl">[[ plan.name ]]</h3>
+            <span v-if="plan.highlight" class="text-xs font-semibold text-navy bg-tealbright rounded-full px-3 py-1">Mais escolhido</span>
+          </div>
+          <p class="mt-4"><span class="text-4xl font-bold">[[ plan.price ]]</span> <span class="text-muted text-sm">[[ plan.period ]]</span></p>
+          <ul class="mt-6 space-y-2 text-sm flex-1">
+            <li v-for="item in plan.items" :key="item" class="flex gap-2">
+              <span class="text-tealbright">—</span><span>[[ item ]]</span>
+            </li>
+          </ul>
+          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-8 text-center font-bold px-6 py-3 rounded-xl transition" :class="plan.highlight ? 'bg-tealbright text-navy hover:opacity-90' : 'border border-line hover:bg-line'">Começar</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- redes -->
+    <section id="redes" class="py-16 border-t border-line">
+      <h2 class="font-display text-5xl">Redes</h2>
+      <p class="text-muted mt-2">Dicas de treino e novidades do Arnaldo.</p>
+      <div class="grid sm:grid-cols-3 gap-4 mt-10">
+        <a v-for="social in content.socials" :key="social.name" :href="social.url" target="_blank" rel="noopener" class="group bg-card border border-line rounded-2xl p-6 hover:border-tealbright transition">
+          <h3 class="font-display text-3xl">[[ social.name ]]</h3>
+          <p class="text-muted text-sm mt-1 group-hover:text-tealbright transition">[[ social.handle ]]</p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-line py-8 text-center text-xs text-muted">
+    © [[ year ]] Arnaldo.gym.ai · Feito pra quem treina
+  </footer>
+</div>
+
+<script>
+  const { createApp } = Vue;
+
+  createApp({
+    delimiters: ['[[', ']]'],
+    data() {
+      return {
+        content: {{ content | tojson }},
+        links: [
+          { id: 'home', label: 'Home' },
+          { id: 'funcionalidades', label: 'Funcionalidades' },
+          { id: 'preco', label: 'Preço' },
+          { id: 'redes', label: 'Redes' },
+        ],
+        active: 'home',
+        menuOpen: false,
+        year: new Date().getFullYear(),
+      };
+    },
+    mounted() {
+      // destaca na navbar a seção que está na tela
+      const observer = new IntersectionObserver(
+        (entries) => entries.forEach((e) => { if (e.isIntersecting) this.active = e.target.id; }),
+        { rootMargin: '-45% 0px -50% 0px' },
+      );
+      this.links.forEach((l) => observer.observe(document.getElementById(l.id)));
+    },
+  }).mount('#app');
+</script>
+</body>
+</html>

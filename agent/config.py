@@ -22,6 +22,9 @@ class Settings:
     dashboard_signing_key: str = os.getenv("DASHBOARD_SIGNING_KEY", "")
     public_base_url: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:8001").rstrip("/")
 
+    mercadopago_access_token: str = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    mercadopago_webhook_secret: str = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
+
 settings = Settings()
 
 def get_provider():
@@ -41,6 +44,11 @@ def get_llm_client():
     from .clients.llm import GeminiClient
 
     return GeminiClient(api_key=settings.gemini_api_key)
+
+def get_payment_client():
+    from .clients.mercadopago import MercadoPagoClient
+
+    return MercadoPagoClient(access_token=settings.mercadopago_access_token)
 
 def get_decider_client():
     from .clients.decision_model import MercuryDecideClient

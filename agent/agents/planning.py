@@ -4,6 +4,7 @@ import logging
 from google import genai
 from google.genai import types
 
+from agent import billing
 from agent.config import settings
 from agent.llm_usage import record_gemini
 from agent.shared import ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, enter_session_setup
@@ -49,10 +50,13 @@ def _system_prompt(ctx) -> str:
             ("Excluir um plano", "apagar um plano salvo (eu peço confirmação antes)"),
         ]
     features.append(("Começar um treino", "parar de planejar e ir treinar agora"))
+    if not ctx.limits.is_pro:
+        features.append(("Assinar o Pro", "planos e exercícios ilimitados"))
 
     return (
         arnaldo_header("planejando planos de treino.", features)
-        + f"Planos salvos: {plans_line}\n"
+        + f"Plano de assinatura do usuário: {ctx.limits.describe()}\n"
+        f"Planos salvos: {plans_line}\n"
         f"{draft_line}\n"
         f"{pending_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
@@ -80,6 +84,7 @@ def _system_prompt(ctx) -> str:
         "- Depois de adicionar exercícios, mostre como o plano está e lembre que ele pode "
         "*Adicionar exercícios* ou *Salvar o plano*. Depois de salvar, lembre que ele pode "
         "*Começar um treino* com ele.\n"
+        "- Se uma ferramenta recusar com limit_reached (limite do plano Grátis), explique o limite com os números que vieram no erro, deixe claro que nada foi adicionado/criado, e ofereça as saídas: ajustar o pedido pra caber, *Excluir um plano* (só se o limite for de planos e ele já tiver plano salvo) ou *Assinar o Pro*. Se ele quiser assinar, chame assinar_pro.\n"
         "- Se não for nada disso (ex.: dúvida genérica), responda direto em texto.\n"
         + ARNALDO_STYLE_RULES
     )
@@ -115,6 +120,12 @@ def handle(db, user, text, button_id=None):
         fc = function_calls[0]
         args = dict(fc.args or {})
         logger.info("agent.planning tool_call user=%s name=%s args=%s", user.phone_number, fc.name, args)
+
+        if fc.name == "assinar_pro":
+            result = tools_mod.assinar_pro(db, user, ctx)
+            logger.info("agent.planning tool_result user=%s name=%s result=%s", user.phone_number, fc.name,
+                        {k: v for k, v in result.items() if k != "qr_code"})
+            return billing.pro_charge_reply(result), next_state
 
         if fc.name == "go_to_session":
             result = tools_mod.go_to_session(db, user, ctx)

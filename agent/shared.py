@@ -49,6 +49,7 @@ IDLE_FEATURES = [
     ("Ver exercícios de um plano", "mostrar o que tem em um plano salvo"),
     ("Editar ou excluir um plano", "mexer em um plano que já existe"),
     ("Ver resultados", "receber o link da página com calendário de treinos, progressão por exercício e recordes"),
+    ("Assinar o Pro", "receber um Pix pra ativar o plano Pro por 30 dias"),
 ]
 
 SESSION_SETUP_FEATURES = [

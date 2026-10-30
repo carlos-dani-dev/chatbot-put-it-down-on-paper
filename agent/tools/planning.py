@@ -4,6 +4,8 @@ from typing import Any
 
 from google.genai import types
 
+from agent import billing
+from agent.billing import PlanLimits
 from agent.models import User
 from agent.repos import plan_repo
 
@@ -30,6 +32,18 @@ def _clear_pending(user: User) -> None:
     user.state_data = {k: v for k, v in (user.state_data or {}).items() if k != "pending_action"}
 
 
+def _plans_limit_error(limits: PlanLimits) -> dict:
+    return {
+        "ok": False,
+        "limit_reached": "plans",
+        "error": (
+            f"Limite do plano Grátis: até {limits.max_plans} plano ativo, e o usuário já tem "
+            f"{limits.active_plans}. Pra criar outro ele precisa excluir um plano ou assinar o Pro "
+            "(planos ilimitados). Nada foi criado."
+        ),
+    }
+
+
 def add_to_draft(
     db: Any, user: User, ctx: PlanningContext, exercises: list[dict], name: str | None = None
 ) -> dict:
@@ -38,8 +52,11 @@ def add_to_draft(
     if len(exercises) > MAX_EXERCISES_PER_CALL:
         return {"ok": False, "error": f"Máximo de {MAX_EXERCISES_PER_CALL} exercícios por chamada."}
 
+    limits = ctx.limits
     draft = ctx.draft
     if draft is None:
+        if limits.plans_full:
+            return _plans_limit_error(limits)
         plan_name = (name or "").strip()[:60]
         if not plan_name:
             return {"ok": False, "error": "Ainda não há rascunho — informe o nome do plano junto com os exercícios."}
@@ -55,6 +72,21 @@ def add_to_draft(
             return {"ok": False, "error": f"Exercício {i} ({ex_name}): quantidade de séries inválida (1 a 20)."}
         validated_items.append({"name": ex_name, "target_sets": int(target)})
 
+    # recusa a chamada inteira em vez de aceitar só parte: nada entra no plano sem o usuário saber
+    max_ex = limits.max_exercises_per_plan
+    if max_ex is not None and len(draft["items"]) + len(validated_items) > max_ex:
+        room = max(0, max_ex - len(draft["items"]))
+        return {
+            "ok": False,
+            "limit_reached": "exercises",
+            "error": (
+                f"Limite do plano Grátis: até {max_ex} exercícios por plano. O rascunho tem "
+                f"{len(draft['items'])} e o usuário tentou adicionar {len(validated_items)} — cabem só mais "
+                f"{room}. Nenhum exercício desta mensagem foi adicionado. Ele pode mandar só {room} "
+                "exercício(s), salvar assim, ou assinar o Pro pra ter exercícios ilimitados."
+            ),
+        }
+
     draft = {**draft, "items": draft["items"] + validated_items}
     _set_draft(user, draft)
 
@@ -64,6 +96,19 @@ def add_to_draft(
 def save_draft(db: Any, user: User, ctx: PlanningContext) -> dict:
     if ctx.draft is None or not ctx.draft.get("items"):
         return {"ok": False, "error": "Não há nenhum rascunho com exercícios pra salvar."}
+
+    # última barreira: confere de novo na hora de gravar
+    limits = ctx.limits
+    if limits.plans_full:
+        return _plans_limit_error(limits)
+    max_ex = limits.max_exercises_per_plan
+    if max_ex is not None and len(ctx.draft["items"]) > max_ex:
+        return {
+            "ok": False,
+            "limit_reached": "exercises",
+            "error": f"Limite do plano Grátis: até {max_ex} exercícios por plano, e o rascunho tem "
+                     f"{len(ctx.draft['items'])}. Ele precisa tirar exercícios ou assinar o Pro.",
+        }
 
     plan = plan_repo.save_plan(db, user, ctx.draft)
     name = ctx.draft["name"]
@@ -141,6 +186,10 @@ def go_to_session(db: Any, user: User, ctx: PlanningContext) -> dict:
     return {"ok": True, "next_state": "session_setup"}
 
 
+def assinar_pro(db: Any, user: User, ctx: PlanningContext) -> dict:
+    return billing.pro_charge_result(db, user)
+
+
 TOOL_IMPLS = {
     "add_to_draft": add_to_draft,
     "save_draft": save_draft,
@@ -151,6 +200,7 @@ TOOL_IMPLS = {
     "confirm_pending_action": confirm_pending_action,
     "cancel_pending_action": cancel_pending_action,
     "go_to_session": go_to_session,
+    "assinar_pro": assinar_pro,
 }
 
 
@@ -233,6 +283,16 @@ def build_declarations(ctx: PlanningContext) -> list[types.FunctionDeclaration]:
         decls.append(types.FunctionDeclaration(
             name="cancel_pending_action",
             description="Cancela a ação pendente, sem executar nada.",
+            parameters=types.Schema(type="OBJECT", properties={}),
+        ))
+
+    if not ctx.limits.is_pro:
+        decls.append(types.FunctionDeclaration(
+            name="assinar_pro",
+            description=(
+                "O usuário quer assinar/contratar/pagar o plano Pro (ex.: depois de bater o limite do "
+                "plano Grátis). Gera um Pix de cobrança; o Pro só é ativado quando o pagamento cair."
+            ),
             parameters=types.Schema(type="OBJECT", properties={}),
         ))
 
