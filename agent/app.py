@@ -17,6 +17,8 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from landing.app import app as landing_app
+
 from agent.config import get_provider, settings
 from agent.database import engine, SessionLocal
 from .resume_check import handle_resume_check
@@ -54,6 +56,8 @@ app = FastAPI(
 )
 
 app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")
+# site de divulgação servido pelo mesmo processo, pra caber no único domínio fixo do ngrok
+app.mount("/site", landing_app, name="site")
 
 app.add_middleware(
     CORSMiddleware,
