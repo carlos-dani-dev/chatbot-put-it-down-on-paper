@@ -7,6 +7,13 @@ from ..models import Exercise, User, WorkoutSession, WorkoutSet
 
 
 def start_session(db: Any, user: User, plan_id: int | None) -> WorkoutSession:
+    # sessão anterior que nunca foi finalizada não pode continuar aberta, senão
+    # get_open_session pode devolver ela e as séries novas caem num treino antigo
+    for stale in db.scalars(
+        select(WorkoutSession).where(WorkoutSession.user_id == user.id, WorkoutSession.ended_at.is_(None))
+    ).all():
+        abandon_session(db, stale)
+
     session = WorkoutSession(user_id=user.id, plan_id=plan_id)
     db.add(session)
     db.flush()
@@ -15,10 +22,18 @@ def start_session(db: Any, user: User, plan_id: int | None) -> WorkoutSession:
 
 def get_open_session(db: Any, user: User) -> WorkoutSession | None:
     return db.scalar(
-        select(WorkoutSession).where(
-            WorkoutSession.user_id == user.id, WorkoutSession.ended_at.is_(None)
-        )
+        select(WorkoutSession)
+        .where(WorkoutSession.user_id == user.id, WorkoutSession.ended_at.is_(None))
+        .order_by(WorkoutSession.started_at.desc(), WorkoutSession.id.desc())
+        .limit(1)
     )
+
+
+def abandon_session(db: Any, ws: WorkoutSession) -> None:
+    """Fecha uma sessão largada sem finalizar, usando o horário da última série como fim."""
+    last_logged = db.scalar(select(func.max(WorkoutSet.logged_at)).where(WorkoutSet.session_id == ws.id))
+    ws.ended_at = last_logged or ws.started_at
+    ws.ended_reason = "abandoned"
 
 
 def count_sets(db: Any, session_id: int, exercise_id: int | None = None) -> int:

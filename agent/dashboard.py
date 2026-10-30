@@ -83,12 +83,14 @@ def _plan_name(ws: WorkoutSession) -> str:
 def build_dashboard_context(db: Any, user: User) -> dict:
     member_since = _local(user.created_at).strftime("%m/%Y") if user.created_at else None
 
+    # todo treino com pelo menos uma série conta, finalizado ou não — sessão largada sem
+    # "finalizar" ainda é treino feito
     sessions = db.scalars(
         select(WorkoutSession)
         .outerjoin(Plan, Plan.id == WorkoutSession.plan_id)
         .where(
             WorkoutSession.user_id == user.id,
-            WorkoutSession.ended_at.is_not(None),
+            WorkoutSession.id.in_(select(WorkoutSet.session_id).where(WorkoutSet.user_id == user.id)),
             or_(WorkoutSession.plan_id.is_(None), Plan.archived_at.is_(None)),
         )
         .order_by(WorkoutSession.started_at)
@@ -125,53 +127,48 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         return round(done / sum(targets.values()) * 100)
 
     today = datetime.now(LOCAL_TZ).date()
-    all_sets = [s for ws in sessions for s in sets_by_session[ws.id]]
-    durations = [m for m in (_session_minutes(ws) for ws in sessions) if m is not None]
-    rests = [s.rest_seconds for s in all_sets if s.rest_seconds]
-
-    # --- resumo geral ---
-    session_weeks = {_week_start(_local(ws.started_at).date()) for ws in sessions}
     this_week = _week_start(today)
-    week_cursor = this_week if this_week in session_weeks else this_week - timedelta(weeks=1)
-    streak = 0
-    while week_cursor in session_weeks:
-        streak += 1
-        week_cursor -= timedelta(weeks=1)
 
-    sessions_this_week = sum(1 for ws in sessions if _week_start(_local(ws.started_at).date()) == this_week)
-    sessions_last_week = sum(
-        1 for ws in sessions if _week_start(_local(ws.started_at).date()) == this_week - timedelta(weeks=1)
-    )
+    def status(ws: WorkoutSession) -> str | None:
+        if ws.ended_at is not None:
+            return None
+        return "Em andamento" if user.state == "session" and ws is sessions[-1] else "Não finalizado"
 
-    summary = {
-        "total_sessions": len(sessions),
-        "total_sets": len(all_sets),
-        "total_reps": sum(s.reps for s in all_sets),
-        "total_volume_label": _format_kg(sum(volume_by_session.values())),
-        "streak_weeks": streak,
-        "sessions_this_week": sessions_this_week,
-        "week_delta": sessions_this_week - sessions_last_week,
-        "avg_duration_label": _format_duration(round(sum(durations) / len(durations))) if durations else None,
-        "total_time_label": _format_duration(sum(durations)) if durations else None,
-        "avg_rest_label": f"{round(sum(rests) / len(rests))}s" if rests else None,
+    def session_detail(ws: WorkoutSession) -> dict:
+        grouped: dict[int, dict] = {}
+        for s in sets_by_session[ws.id]:
+            entry = grouped.setdefault(s.exercise_id, {"name": s.exercise.name, "sets": [], "best": 0.0})
+            entry["sets"].append(f"{float(s.weight_kg):g}kg × {s.reps}")
+            entry["best"] = max(entry["best"], float(s.weight_kg))
+        minutes = _session_minutes(ws)
+        return {
+            "plan_name": _plan_name(ws),
+            "time_label": _local(ws.started_at).strftime("%H:%M"),
+            "volume_label": _format_kg(volume_by_session[ws.id]),
+            "duration_label": _format_duration(minutes) if minutes else None,
+            "sets_count": len(sets_by_session[ws.id]),
+            "adherence": adherence_pct(ws),
+            "status": status(ws),
+            "exercises": [
+                {"name": e["name"], "sets": e["sets"], "best_label": _format_kg(e["best"])}
+                for e in grouped.values()
+            ],
+        }
+
+    # --- calendário: treinos por dia (data local) ---
+    calendar_days: dict[str, list[dict]] = defaultdict(list)
+    for ws in sessions:
+        calendar_days[_local(ws.started_at).date().isoformat()].append(session_detail(ws))
+    first_day = _local(sessions[0].started_at).date()
+    calendar = {
+        "days": calendar_days,
+        "first_month": f"{first_day.year}-{first_day.month:02d}",
+        "today": today.isoformat(),
     }
 
     # --- treino mais recente ---
     last = sessions[-1]
-    last_minutes = _session_minutes(last)
-    grouped: dict[int, dict] = {}
-    for s in sets_by_session[last.id]:
-        entry = grouped.setdefault(s.exercise_id, {"name": s.exercise.name, "sets": []})
-        entry["sets"].append(f"{float(s.weight_kg):g}kg × {s.reps}")
-    last_session = {
-        "date_label": _format_relative_date(last.started_at),
-        "plan_name": _plan_name(last),
-        "volume_label": _format_kg(volume_by_session[last.id]),
-        "duration_label": _format_duration(last_minutes) if last_minutes else None,
-        "sets_count": len(sets_by_session[last.id]),
-        "adherence": adherence_pct(last),
-        "exercises": list(grouped.values()),
-    }
+    last_session = {"date_label": _format_relative_date(last.started_at), **session_detail(last)}
 
     # --- histórico por exercício (todas as sessões visíveis) + recordes ---
     history: dict[int, dict] = {}
@@ -304,7 +301,7 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         "user": user,
         "member_since": member_since,
         "has_data": True,
-        "summary": summary,
+        "calendar": calendar,
         "last_session": last_session,
         "plans": plans,
         "records": list(reversed(records))[:RECORDS_LIMIT],

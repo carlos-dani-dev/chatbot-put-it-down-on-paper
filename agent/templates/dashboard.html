@@ -53,6 +53,7 @@
   .menu-btn { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 10px; }
   .menu-btn:active { background: var(--surface-2); }
   .wordmark { text-align: center; font-family: 'Bebas Neue', sans-serif; font-style: italic; font-size: 32px; letter-spacing: 0.04em; }
+  .wordmark-gym { color: #B4BAC4; }
   .logo { justify-self: end; width: 48px; height: 48px; object-fit: contain; }
 
   /* ---------- drawer ---------- */
@@ -88,17 +89,38 @@
   .up { color: var(--good); font-weight: 600; }
   .muted { color: var(--text-muted); }
 
-  /* ---------- resumo ---------- */
-  .hero { display: flex; align-items: center; gap: 16px; }
-  .hero .figure { font-size: 56px; font-weight: 800; line-height: 1; }
-  .hero .figure-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
-  .hero .side { margin-left: auto; text-align: right; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-  .hero .side strong { color: var(--text-primary); font-size: 20px; font-weight: 800; display: block; }
-  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .tile { background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: 14px; padding: 12px 14px; }
-  .tile .label { font-size: 11px; color: var(--text-secondary); }
-  .tile .value { font-size: 22px; font-weight: 800; margin-top: 4px; white-space: nowrap; }
-  .tile .value .unit { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-left: 2px; }
+  /* ---------- calendário ---------- */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .05em; }
+  .cal-nav { width: 40px; height: 40px; border: none; border-radius: 12px; background: var(--surface-3); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .cal-nav:disabled { opacity: .3; cursor: default; }
+  .cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-weekdays span { text-align: center; font-size: 11px; font-weight: 600; color: var(--text-muted); padding-bottom: 4px; }
+  .cal-day { position: relative; aspect-ratio: 1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: var(--text-secondary); background: transparent; border: none; font-family: inherit; padding: 0; }
+  .cal-day.empty { visibility: hidden; }
+  .cal-day.future { color: var(--surface-3); }
+  .cal-day.today { box-shadow: inset 0 0 0 1.5px var(--text-secondary); color: var(--text-primary); }
+  .cal-day.trained { background: var(--heat-2); color: var(--text-primary); font-weight: 800; cursor: pointer; }
+  .cal-day.trained:active { transform: scale(.94); }
+  .cal-day .count { position: absolute; top: 3px; right: 5px; font-size: 9px; font-weight: 800; color: var(--heat-4); }
+  .cal-foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--surface-3); font-size: 12px; color: var(--text-secondary); }
+  .cal-foot strong { color: var(--text-primary); }
+
+  /* ---------- janela do dia ---------- */
+  .sheet { position: fixed; inset: 0; z-index: 40; background: var(--surface-1); overflow-y: auto; transform: translateY(100%); transition: transform .25s ease, visibility 0s linear .25s; visibility: hidden; }
+  .sheet.open { transition: transform .25s ease, visibility 0s; }
+  .sheet.open { transform: translateY(0); visibility: visible; }
+  body.sheet-open { overflow: hidden; }
+  .sheet-inner { max-width: 480px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+  .sheet-top { position: sticky; top: 0; background: var(--surface-1); display: flex; align-items: center; gap: 10px; padding: 4px 0 14px; z-index: 1; }
+  .back-btn { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px; border: none; border-radius: 12px; background: var(--surface-2); color: var(--text-primary); font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .sheet-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: .04em; margin: 4px 0 2px; }
+  .sheet-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+  .day-session { margin-bottom: 12px; }
+  .day-session .head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .day-session .plan { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: .03em; }
+  .day-session .time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .status-tag { font-size: 11px; font-weight: 600; color: var(--podium-gold); }
 
   /* ---------- treino mais recente ---------- */
   .last-session-card > summary { list-style: none; cursor: pointer; }
@@ -245,20 +267,36 @@
     </div>
   </div>
   {% if has_data %}
-  <a href="#resumo">⚡ Resumo</a>
-  <a href="#recente">📅 Treino mais recente</a>
-  <a href="#consistencia">🔥 Consistência</a>
-  <a href="#volume">📊 Volume por treino</a>
-  <a href="#progresso">📈 Progresso por exercício</a>
-  {% if records %}<a href="#recordes">🏅 Recordes recentes</a>{% endif %}
-  {% if adherence %}<a href="#aderencia">🎯 Aderência aos planos</a>{% endif %}
-  <a href="#ranking">🏆 Treinos mais feitos</a>
+  <a href="#calendario">Calendário</a>
+  <a href="#recente">Treino mais recente</a>
+  <a href="#consistencia">Consistência</a>
+  <a href="#volume">Volume por treino</a>
+  <a href="#progresso">Progresso por exercício</a>
+  {% if records %}<a href="#recordes">Recordes recentes</a>{% endif %}
+  {% if adherence %}<a href="#aderencia">Aderência aos planos</a>{% endif %}
+  <a href="#ranking">Treinos mais feitos</a>
   {% endif %}
   <div class="foot">
     {% if member_since %}Treinando com o Arnaldo desde {{ member_since }}.<br>{% endif %}
-    Este link é pessoal e expira em alguns minutos. Peça um novo no WhatsApp quando quiser. 💪
+    Este link é pessoal e expira em alguns minutos. Peça um novo no WhatsApp quando quiser.
   </div>
 </nav>
+
+{% if has_data %}
+<div class="sheet" id="day-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-inner">
+    <div class="sheet-top">
+      <button type="button" class="back-btn" id="sheet-back">
+        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Voltar
+      </button>
+    </div>
+    <div class="sheet-title" id="sheet-title"></div>
+    <div class="sheet-sub" id="sheet-sub"></div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+{% endif %}
 
 <div class="page">
 
@@ -266,42 +304,29 @@
     <label for="menu-toggle" class="menu-btn" aria-label="Abrir menu">
       <svg width="22" height="16" viewBox="0 0 22 16" fill="none"><path d="M0 1h22M0 8h22M0 15h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </label>
-    <div class="wordmark">ARNALDO</div>
+    <div class="wordmark">Arnaldo<span class="wordmark-gym">.gym</span>.ai</div>
     <img class="logo" src="/static/arnaldo.png" alt="Arnaldo">
   </header>
 
   {% if not has_data %}
-  <div class="empty-state">Nenhum treino concluído ainda. Assim que você finalizar uma sessão, seus resultados aparecem aqui. 💪</div>
+  <div class="empty-state">Nenhum treino concluído ainda. Assim que você registrar uma série, seus resultados aparecem aqui.</div>
   {% else %}
 
-  {# ===================== RESUMO ===================== #}
-  <h2 class="section-title" id="resumo">RESUMO</h2>
-  <div class="card hero">
-    <div>
-      <div class="figure">{{ summary.streak_weeks }}</div>
-      <div class="figure-label">{{ "semana seguida" if summary.streak_weeks == 1 else "semanas seguidas" }} treinando 🔥</div>
+  {# ===================== CALENDÁRIO ===================== #}
+  <h2 class="section-title" id="calendario">CALENDÁRIO</h2>
+  <div class="card calendar">
+    <div class="cal-head">
+      <button type="button" class="cal-nav" id="cal-prev" aria-label="Mês anterior">
+        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="cal-title" id="cal-title" aria-live="polite"></div>
+      <button type="button" class="cal-nav" id="cal-next" aria-label="Próximo mês">
+        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <div class="side">
-      <strong>{{ summary.sessions_this_week }}</strong>
-      {{ "treino" if summary.sessions_this_week == 1 else "treinos" }} esta semana<br>
-      {% if summary.week_delta > 0 %}<span class="up">▲ {{ summary.week_delta }} vs. semana passada</span>
-      {% elif summary.week_delta < 0 %}<span class="muted">▼ {{ -summary.week_delta }} vs. semana passada</span>
-      {% else %}<span class="muted">= semana passada</span>{% endif %}
-    </div>
-  </div>
-  <div class="tiles">
-    <div class="tile"><div class="label">Treinos concluídos</div><div class="value">{{ summary.total_sessions }}</div></div>
-    <div class="tile"><div class="label">Volume levantado</div><div class="value">{{ summary.total_volume_label }}<span class="unit">kg</span></div></div>
-    <div class="tile"><div class="label">Séries · repetições</div><div class="value">{{ summary.total_sets }}<span class="unit">· {{ summary.total_reps }}</span></div></div>
-    {% if summary.avg_duration_label %}
-    <div class="tile"><div class="label">Duração média</div><div class="value">{{ summary.avg_duration_label }}</div></div>
-    {% endif %}
-    {% if summary.total_time_label %}
-    <div class="tile"><div class="label">Tempo total treinando</div><div class="value">{{ summary.total_time_label }}</div></div>
-    {% endif %}
-    {% if summary.avg_rest_label %}
-    <div class="tile"><div class="label">Descanso médio</div><div class="value">{{ summary.avg_rest_label }}</div></div>
-    {% endif %}
+    <div class="cal-weekdays"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-foot" id="cal-foot"></div>
   </div>
 
   {# ===================== TREINO MAIS RECENTE ===================== #}
@@ -325,7 +350,8 @@
     <div class="chips">
       <span class="chip">{{ last_session.sets_count }} {{ "série" if last_session.sets_count == 1 else "séries" }}</span>
       <span class="chip">{{ last_session.exercises | length }} {{ "exercício" if last_session.exercises | length == 1 else "exercícios" }}</span>
-      {% if last_session.duration_label %}<span class="chip">⏱ {{ last_session.duration_label }}</span>{% endif %}
+      {% if last_session.duration_label %}<span class="chip">{{ last_session.duration_label }}</span>{% endif %}
+      {% if last_session.status %}<span class="chip status-tag">{{ last_session.status }}</span>{% endif %}
     </div>
     {% if last_session.adherence is not none %}
     <div class="meter">
@@ -420,7 +446,9 @@
   <div class="card">
     {% for r in records %}
     <div class="record">
-      <div class="icon">🏅</div>
+      <div class="icon">
+        <svg width="16" height="18" viewBox="0 0 16 18" fill="none" style="color: var(--podium-gold);"><path d="M4 1h8v4a4 4 0 0 1-8 0V1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 3H1.5a2.5 2.5 0 0 0 2.5 3M12 3h2.5A2.5 2.5 0 0 1 12 6M8 9v4M5 17h6M6 13h4v4H6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
       <div class="info">
         <div class="name">{{ r.exercise }}</div>
         <div class="when">{{ r.date_label }}</div>
@@ -478,6 +506,144 @@
 
 {% if has_data %}
 <script>
+  // ================= calendário + janela do dia =================
+  const CALENDAR = {{ calendar | tojson }};
+  const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const WEEKDAYS_LONG = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const isoOf = (y, m, d) => `${y}-${pad2(m + 1)}-${pad2(d)}`;
+
+  const [todayY, todayM] = CALENDAR.today.split('-').map(Number);
+  const [firstY, firstM] = CALENDAR.first_month.split('-').map(Number);
+  let viewY = todayY, viewM = todayM - 1;  // mês 0-indexado
+
+  // monta elemento com texto via textContent — nomes vêm do usuário, nunca entram como HTML
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderCalendar() {
+    const grid = document.getElementById('cal-grid');
+    grid.replaceChildren();
+    document.getElementById('cal-title').textContent = `${MONTHS[viewM]} ${viewY}`;
+
+    const offset = (new Date(viewY, viewM, 1).getDay() + 6) % 7;  // segunda = 0
+    const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+    for (let i = 0; i < offset; i++) grid.appendChild(el('div', 'cal-day empty'));
+
+    let monthSessions = 0, monthDays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = isoOf(viewY, viewM, d);
+      const sessions = CALENDAR.days[iso];
+      const cell = el(sessions ? 'button' : 'div', 'cal-day', String(d));
+      if (iso === CALENDAR.today) cell.classList.add('today');
+      if (iso > CALENDAR.today) cell.classList.add('future');
+      if (sessions) {
+        monthDays++;
+        monthSessions += sessions.length;
+        cell.type = 'button';
+        cell.classList.add('trained');
+        cell.setAttribute('aria-label', `${d} de ${MONTHS[viewM]}: ${sessions.length} ${sessions.length === 1 ? 'treino' : 'treinos'}`);
+        if (sessions.length > 1) cell.appendChild(el('span', 'count', String(sessions.length)));
+        cell.addEventListener('click', () => openDay(iso));
+      }
+      grid.appendChild(cell);
+    }
+
+    const foot = document.getElementById('cal-foot');
+    foot.replaceChildren();
+    const left = el('span');
+    left.append(el('strong', '', String(monthDays)), ` ${monthDays === 1 ? 'dia treinado' : 'dias treinados'}`);
+    const right = el('span');
+    right.append(el('strong', '', String(monthSessions)), ` ${monthSessions === 1 ? 'treino' : 'treinos'} no mês`);
+    foot.append(left, right);
+
+    document.getElementById('cal-prev').disabled = viewY < firstY || (viewY === firstY && viewM + 1 <= firstM);
+    document.getElementById('cal-next').disabled = viewY > todayY || (viewY === todayY && viewM + 1 >= todayM);
+  }
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderCalendar();
+  });
+
+  function sessionCard(s) {
+    const card = el('div', 'card day-session');
+    const head = el('div', 'head');
+    head.append(el('div', 'plan', s.plan_name.toUpperCase()), el('div', 'time', `às ${s.time_label}`));
+    card.appendChild(head);
+
+    const chips = el('div', 'chips');
+    chips.append(el('span', 'chip', `${s.volume_label} kg`));
+    chips.append(el('span', 'chip', `${s.sets_count} ${s.sets_count === 1 ? 'série' : 'séries'}`));
+    if (s.duration_label) chips.append(el('span', 'chip', s.duration_label));
+    if (s.status) chips.append(el('span', 'chip status-tag', s.status));
+    card.appendChild(chips);
+
+    if (s.adherence !== null) {
+      const meter = el('div', 'meter');
+      const mh = el('div', 'head');
+      mh.append(el('span', 'name', 'Plano cumprido'), el('span', 'pct', `${s.adherence}%`));
+      const track = el('div', 'track');
+      const fill = el('div', 'fill');
+      fill.style.width = `${s.adherence}%`;
+      track.appendChild(fill);
+      meter.append(mh, track);
+      card.appendChild(meter);
+    }
+
+    const detail = el('div', 'last-session-detail');
+    s.exercises.forEach((ex) => {
+      const row = el('div', 'ex');
+      row.append(el('div', 'name', ex.name), el('div', 'sets', ex.sets.join(' · ')));
+      detail.appendChild(row);
+    });
+    card.appendChild(detail);
+    return card;
+  }
+
+  const sheet = document.getElementById('day-sheet');
+
+  function openDay(iso, push = true) {
+    const sessions = CALENDAR.days[iso];
+    if (!sessions) return;
+    const [y, m, d] = iso.split('-').map(Number);
+    const weekday = WEEKDAYS_LONG[new Date(y, m - 1, d).getDay()];
+    document.getElementById('sheet-title').textContent = `${weekday}, ${d} de ${MONTHS[m - 1].toLowerCase()}`;
+    document.getElementById('sheet-sub').textContent = `${sessions.length} ${sessions.length === 1 ? 'treino registrado' : 'treinos registrados'}`;
+    const body = document.getElementById('sheet-body');
+    body.replaceChildren(...sessions.map(sessionCard));
+    sheet.scrollTop = 0;
+    sheet.classList.add('open');
+    document.body.classList.add('sheet-open');
+    // entra no histórico: o "voltar" do celular fecha a janela em vez de sair da página
+    if (push) history.pushState({ day: iso }, '', `#dia-${iso}`);
+    document.getElementById('sheet-back').focus();
+  }
+
+  function closeDay() {
+    sheet.classList.remove('open');
+    document.body.classList.remove('sheet-open');
+  }
+
+  document.getElementById('sheet-back').addEventListener('click', () => {
+    if (history.state && history.state.day) history.back(); else closeDay();
+  });
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.day) openDay(e.state.day, false); else closeDay();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheet.classList.contains('open')) document.getElementById('sheet-back').click();
+  });
+
+  renderCalendar();
+
+  // ================= gráficos =================
   const PLANS = {{ plans | tojson }};
   const FREQUENCY = {{ frequency | tojson }};
   const VOLUME = {{ volume_series | tojson }};
