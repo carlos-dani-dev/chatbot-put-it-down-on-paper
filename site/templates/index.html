@@ -3,32 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101720">
+<meta name="theme-color" content="#0B1118">
 <meta name="description" content="Arnaldo é um agente de IA no WhatsApp que registra seus treinos e controla sua carga por mensagem.">
 <title>Arnaldo.gym.ai · Seu parceiro de treino no WhatsApp</title>
 <link rel="icon" href="static/arnaldo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com/3.4.16"></script>
 <script>
   tailwind.config = {
     theme: {
       extend: {
         colors: {
-          navy: '#101720',
-          card: '#161F2C',
-          line: '#232F42',
-          cream: '#F5F5EF',
-          muted: '#9AA7BD',
-          gym: '#B4BAC4',
-          teal: '#0EA5A0',
-          tealbright: '#38E8DC',
+          ink: '#0B1118',
+          card: '#121B26',
+          line: '#1F2B3A',
+          muted: '#8B97A7',
+          dim: '#5F6B7A',
+          wa: '#25D366',
+          wadark: '#128C7E',
+          bubble: '#005C4B',
+          botbubble: '#1A2634',
+          phone: '#0E1620',
+          screen: '#0A1118',
         },
-        fontFamily: {
-          display: ['"Bebas Neue"', 'sans-serif'],
-          sans: ['Montserrat', 'sans-serif'],
-        },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        letterSpacing: { display: '-0.035em', eyebrow: '0.2em' },
       },
     },
   };
@@ -37,116 +38,165 @@
 <style>
   html { scroll-behavior: smooth; }
   [v-cloak] { display: none; }
-  section { scroll-margin-top: 72px; }
+  section { scroll-margin-top: 80px; }
+  .glow { box-shadow: 0 40px 90px -30px rgba(37, 211, 102, .45); }
+  .pro-card { background: linear-gradient(180deg, #11231A 0%, #121B25 70%); }
+  .cta-card { background: linear-gradient(135deg, #0F291C 0%, #0E2021 50%, #0E1A25 100%); }
 </style>
 </head>
-<body class="bg-navy text-cream font-sans antialiased">
+<body class="bg-ink text-white font-sans antialiased">
 <div id="app" v-cloak>
 
   <!-- navbar -->
-  <header class="sticky top-0 z-20 bg-navy/90 backdrop-blur border-b border-line">
-    <nav class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-      <a href="#home" class="flex items-center gap-2">
-        <img src="static/arnaldo.png" alt="" class="h-9 w-9 object-contain">
-        <span class="font-display italic text-2xl tracking-wide">Arnaldo<span class="text-gym">.gym</span>.ai</span>
+  <header class="sticky top-0 z-30 bg-ink/90 backdrop-blur">
+    <nav class="max-w-[1120px] mx-auto px-4 lg:px-0 h-[76px] lg:h-[96px] flex items-center justify-between">
+      <a href="#home" class="flex items-center">
+        <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center text-ink font-bold text-[17px]">A</span>
+        <span class="ml-3 text-[17px] font-bold">Arnaldo</span>
+        <span class="ml-3 text-[17px] text-muted">.gym.ai</span>
       </a>
-      <ul class="hidden md:flex items-center gap-8 text-sm font-medium">
-        <li v-for="link in links" :key="link.id">
-          <a :href="'#' + link.id" class="transition-colors" :class="active === link.id ? 'text-tealbright' : 'text-muted hover:text-cream'">[[ link.label ]]</a>
-        </li>
-      </ul>
-      <button class="md:hidden h-10 w-10 flex items-center justify-center rounded-lg hover:bg-card" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" aria-label="Menu">
-        <svg width="22" height="16" viewBox="0 0 22 16" fill="none"><path :d="menuOpen ? 'M3 1l16 14M3 15L19 1' : 'M0 1h22M0 8h22M0 15h22'" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="hidden md:flex items-center gap-9">
+        <a v-for="link in links" :key="link.id" :href="'#' + link.id" class="text-[15px] transition-colors" :class="active === link.id ? 'text-white' : 'text-muted hover:text-white'">[[ link.label ]]</a>
+        <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="bg-wa text-ink text-[14px] font-semibold px-[22px] py-[10px] rounded-full hover:brightness-110 transition">Começar no WhatsApp</a>
+      </div>
+      <button class="md:hidden h-10 w-10 -mr-2 flex items-center justify-center rounded-full hover:bg-card" @click="menuOpen = !menuOpen" :aria-expanded="menuOpen" aria-label="Menu">
+        <svg width="20" height="14" viewBox="0 0 20 14" fill="none"><path :d="menuOpen ? 'M3 1l14 12M3 13L17 1' : 'M0 1h20M0 7h20M0 13h20'" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </nav>
-    <ul v-if="menuOpen" class="md:hidden border-t border-line px-4 py-2">
-      <li v-for="link in links" :key="link.id">
-        <a :href="'#' + link.id" @click="menuOpen = false" class="block py-3 font-medium" :class="active === link.id ? 'text-tealbright' : 'text-cream'">[[ link.label ]]</a>
-      </li>
-    </ul>
+    <div v-if="menuOpen" class="md:hidden border-t border-line px-4 pb-4">
+      <a v-for="link in links" :key="link.id" :href="'#' + link.id" @click="menuOpen = false" class="block py-3 text-[15px]" :class="active === link.id ? 'text-white' : 'text-muted'">[[ link.label ]]</a>
+      <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-2 block text-center bg-wa text-ink font-semibold py-3 rounded-full">Começar no WhatsApp</a>
+    </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4">
+  <main class="max-w-[1120px] mx-auto px-4 lg:px-0">
 
-    <!-- home -->
-    <section id="home" class="py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
+    <!-- hero -->
+    <section id="home" class="pt-8 pb-16 lg:pt-[80px] lg:pb-[100px] grid lg:grid-cols-2 gap-16 lg:gap-8 items-center">
       <div>
-        <p class="text-tealbright text-sm font-semibold tracking-widest uppercase">Agente de IA no WhatsApp</p>
-        <h1 class="font-display text-6xl md:text-7xl leading-none mt-3">Seu parceiro de treino na palma da mão</h1>
-        <p class="text-muted mt-5 leading-relaxed">O Arnaldo registra suas séries por mensagem e controla sua carga treino a treino. Sem planilha, sem app novo: é só conversar.</p>
-        <div class="flex flex-wrap gap-3 mt-8">
-          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="bg-tealbright text-navy font-bold px-6 py-3 rounded-xl hover:opacity-90 transition">Começar no WhatsApp</a>
-          <a href="#funcionalidades" class="border border-line px-6 py-3 rounded-xl font-semibold hover:bg-card transition">Ver funcionalidades</a>
+        <span class="inline-flex items-center gap-2 rounded-full border border-line bg-wa/5 px-4 py-[6px] text-[13px] font-semibold text-wa">
+          <span class="h-2 w-2 rounded-full bg-wa"></span>Agente de IA no WhatsApp
+        </span>
+        <h1 class="mt-6 text-[44px] sm:text-[56px] lg:text-[64px] font-extrabold leading-[1.04] tracking-display max-w-[500px]">
+          Seu parceiro de treino <span class="text-wa">na palma da mão</span>
+        </h1>
+        <p class="mt-7 text-[18px] lg:text-[20px] leading-[1.55] text-muted max-w-[500px]">O Arnaldo registra suas séries por mensagem e controla sua carga treino a treino. Sem planilha, sem app novo: é só conversar.</p>
+        <div class="mt-10 flex flex-wrap gap-4">
+          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="bg-wa text-ink font-semibold text-[17px] px-[30px] h-[54px] inline-flex items-center rounded-full hover:brightness-110 transition">Começar no WhatsApp →</a>
+          <a href="#funcionalidades" class="border border-line font-semibold text-[17px] px-[30px] h-[54px] inline-flex items-center rounded-full hover:bg-card transition">Ver funcionalidades</a>
         </div>
+        <ul class="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-muted">
+          <template v-for="(stat, i) in content.stats" :key="stat.strong">
+            <li v-if="i > 0" class="text-dim" aria-hidden="true">·</li>
+            <li><strong class="text-white font-semibold">[[ stat.strong ]]</strong> [[ stat.text ]]</li>
+          </template>
+        </ul>
       </div>
 
-      <div class="bg-card border border-line rounded-3xl p-5 space-y-3 max-w-sm w-full md:justify-self-end">
-        <div class="flex items-center gap-3 pb-3 border-b border-line">
-          <img src="static/arnaldo.png" alt="" class="h-10 w-10 object-contain">
-          <div>
-            <div class="font-semibold text-sm">Arnaldo</div>
-            <div class="text-xs text-muted">online</div>
+      <!-- telefone com o mascote espiando por cima -->
+      <div class="flex justify-center lg:justify-end lg:pr-[125px] pt-[120px]">
+        <div class="relative w-full max-w-[330px]">
+          <img src="static/mascote-cabeca.png" alt="" class="absolute left-[64px] -top-[142px] w-[205px] select-none pointer-events-none">
+          <div class="relative z-10 rounded-[36px] border border-line bg-phone p-[14px] glow">
+            <div class="rounded-[26px] bg-screen px-[14px] pt-4 pb-5">
+              <div class="flex items-center gap-3 pb-3 border-b border-line">
+                <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center text-ink font-bold">A</span>
+                <div class="leading-tight">
+                  <div class="text-[15px] font-medium">Arnaldo</div>
+                  <div class="text-[12px] text-wa">online</div>
+                </div>
+              </div>
+              <div class="mt-5 space-y-4 text-[13px] leading-[1.45]">
+                <div class="ml-auto w-[82%] bg-bubble rounded-lg px-3 py-[9px]">supino 80kg 8 reps, 80kg 6</div>
+                <div class="w-[82%] bg-botbubble rounded-lg px-3 py-[9px]">
+                  <strong class="font-semibold">Supino Reto com Barra</strong><br>
+                  Séries 1 a 2: 80kg × 8, 80kg × 6<br>
+                  <span class="text-wa font-medium">Progresso 2/3</span><br>
+                  Falta uma! Quer ver o desempenho anterior?
+                </div>
+                <div class="ml-auto w-[82%] bg-bubble rounded-lg px-3 py-[9px]">como foi da última vez?</div>
+                <div class="w-[82%] bg-botbubble rounded-lg px-3 py-[9px]">
+                  Última vez: 77,5kg × 8.<br>
+                  <span class="text-wa font-semibold">Hoje você subiu +2,5kg 💪</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="ml-auto w-fit max-w-[85%] bg-teal/30 rounded-2xl rounded-tr-sm px-4 py-2 text-sm">supino 80kg 8 reps, 80kg 6</div>
-        <div class="w-fit max-w-[90%] bg-line rounded-2xl rounded-tl-sm px-4 py-2 text-sm leading-relaxed">
-          <strong>Supino Reto com Barra</strong>: séries 1 a 2 (80kg × 8, 80kg × 6) — progresso 2/3<br>
-          Falta uma! Quer <strong>ver o desempenho anterior</strong>?
-        </div>
-        <div class="ml-auto w-fit max-w-[85%] bg-teal/30 rounded-2xl rounded-tr-sm px-4 py-2 text-sm">como foi da última vez?</div>
-        <div class="w-fit max-w-[90%] bg-line rounded-2xl rounded-tl-sm px-4 py-2 text-sm">Última vez: 77,5kg × 8. Hoje você subiu <span class="text-tealbright font-semibold">+2,5kg</span>.</div>
       </div>
     </section>
 
     <!-- funcionalidades -->
-    <section id="funcionalidades" class="py-16 border-t border-line">
-      <h2 class="font-display text-5xl">Funcionalidades</h2>
-      <p class="text-muted mt-2">Tudo pelo WhatsApp, do primeiro treino ao recorde pessoal.</p>
-      <div class="grid sm:grid-cols-2 gap-4 mt-10">
-        <article v-for="(feature, i) in content.features" :key="feature.title" class="bg-card border border-line rounded-2xl p-6">
-          <span class="font-display text-tealbright text-xl">[[ String(i + 1).padStart(2, '0') ]]</span>
-          <h3 class="font-display text-3xl mt-1">[[ feature.title ]]</h3>
-          <p class="text-muted text-sm mt-2 leading-relaxed">[[ feature.text ]]</p>
+    <section id="funcionalidades" class="border-t border-line py-16 lg:py-[84px] text-center">
+      <p class="text-[12px] font-bold uppercase tracking-eyebrow text-wa">Funcionalidades</p>
+      <h2 class="mt-4 text-[34px] lg:text-[44px] font-extrabold tracking-display">Tudo pelo WhatsApp</h2>
+      <p class="mt-3 text-[17px] text-muted">Do primeiro treino ao recorde pessoal.</p>
+      <div class="mt-14 grid md:grid-cols-3 gap-5 text-left">
+        <article v-for="(feature, i) in content.features" :key="feature.title" class="bg-card border border-line rounded-[18px] px-8 pt-8 pb-9">
+          <span class="text-[13px] font-bold text-wa">[[ String(i + 1).padStart(2, '0') ]]</span>
+          <h3 class="mt-10 text-[20px] font-bold">[[ feature.title ]]</h3>
+          <p class="mt-3 text-[15px] leading-[1.55] text-muted">[[ feature.text ]]</p>
         </article>
       </div>
+    </section>
+
+    <!-- como funciona -->
+    <section id="como-funciona" class="border-t border-line py-16 lg:py-[100px] text-center">
+      <p class="text-[12px] font-bold uppercase tracking-eyebrow text-wa">Como funciona</p>
+      <h2 class="mt-4 text-[34px] lg:text-[44px] font-extrabold tracking-display">Três passos. Zero fricção.</h2>
+      <ol class="mt-16 grid md:grid-cols-3 gap-12 md:gap-5">
+        <li v-for="(step, i) in content.steps" :key="step.title">
+          <span class="mx-auto h-[52px] w-[52px] rounded-full border border-wa bg-wa/5 flex items-center justify-center text-[16px] font-semibold text-wa">[[ i + 1 ]]</span>
+          <h3 class="mt-6 text-[18px] font-bold">[[ step.title ]]</h3>
+          <p class="mt-2 text-[15px] text-muted">[[ step.text ]]</p>
+        </li>
+      </ol>
     </section>
 
     <!-- preço -->
-    <section id="preco" class="py-16 border-t border-line">
-      <h2 class="font-display text-5xl">Preço</h2>
-      <p class="text-muted mt-2">Comece de graça. Evolua quando quiser.</p>
-      <div class="grid sm:grid-cols-2 gap-4 mt-10 max-w-3xl">
-        <article v-for="plan in content.plans" :key="plan.name" class="rounded-2xl p-6 border flex flex-col" :class="plan.highlight ? 'bg-card border-tealbright' : 'bg-card border-line'">
-          <div class="flex items-center justify-between">
-            <h3 class="font-display text-3xl">[[ plan.name ]]</h3>
-            <span v-if="plan.highlight" class="text-xs font-semibold text-navy bg-tealbright rounded-full px-3 py-1">Mais escolhido</span>
-          </div>
-          <p class="mt-4"><span class="text-4xl font-bold">[[ plan.price ]]</span> <span class="text-muted text-sm">[[ plan.period ]]</span></p>
-          <ul class="mt-6 space-y-2 text-sm flex-1">
-            <li v-for="item in plan.items" :key="item" class="flex gap-2">
-              <span class="text-tealbright">—</span><span>[[ item ]]</span>
+    <section id="preco" class="border-t border-line py-16 lg:pt-[108px] lg:pb-[120px] text-center">
+      <p class="text-[12px] font-bold uppercase tracking-eyebrow text-wa">Preço</p>
+      <h2 class="mt-4 text-[34px] lg:text-[44px] font-extrabold tracking-display">Comece de graça.</h2>
+      <p class="mt-3 text-[17px] text-muted">Evolua quando quiser.</p>
+      <div class="relative mt-14 mx-auto max-w-[820px] grid md:grid-cols-2 gap-6 text-left">
+        <article v-for="plan in content.plans" :key="plan.name" class="relative rounded-[22px] border p-8 lg:p-10 flex flex-col" :class="plan.highlight ? 'pro-card border-wa/70' : 'bg-card border-line'">
+          <span v-if="plan.highlight" class="absolute -top-3 left-8 lg:left-10 rounded-full bg-wa px-3 py-1 text-[11px] font-bold uppercase text-ink">Mais escolhido</span>
+          <h3 class="text-[17px] font-semibold text-muted">[[ plan.name ]]</h3>
+          <p class="mt-3 flex items-baseline gap-2">
+            <span class="text-[48px] font-extrabold tracking-tight leading-none">[[ plan.price ]]</span>
+            <span v-if="plan.period" class="text-[15px] text-muted">[[ plan.period ]]</span>
+          </p>
+          <ul class="mt-9 space-y-4 text-[15px] flex-1">
+            <li v-for="item in plan.items" :key="item" class="flex items-center gap-2">
+              <svg class="shrink-0 text-wa" width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5.2l3.3 3.3L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>[[ item ]]</span>
             </li>
           </ul>
-          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-8 text-center font-bold px-6 py-3 rounded-xl transition" :class="plan.highlight ? 'bg-tealbright text-navy hover:opacity-90' : 'border border-line hover:bg-line'">Começar</a>
+          <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-10 h-[52px] flex items-center justify-center rounded-full font-semibold text-[16px] transition" :class="plan.highlight ? 'bg-wa text-ink hover:brightness-110' : 'border border-line hover:bg-line'">Começar</a>
         </article>
+        <img src="static/mascote-biceps.png" alt="" class="hidden lg:block absolute -right-[137px] top-[118px] w-[135px] select-none pointer-events-none">
       </div>
     </section>
 
-    <!-- redes -->
-    <section id="redes" class="py-16 border-t border-line">
-      <h2 class="font-display text-5xl">Redes</h2>
-      <p class="text-muted mt-2">Dicas de treino e novidades do Arnaldo.</p>
-      <div class="grid sm:grid-cols-3 gap-4 mt-10">
-        <a v-for="social in content.socials" :key="social.name" :href="social.url" target="_blank" rel="noopener" class="group bg-card border border-line rounded-2xl p-6 hover:border-tealbright transition">
-          <h3 class="font-display text-3xl">[[ social.name ]]</h3>
-          <p class="text-muted text-sm mt-1 group-hover:text-tealbright transition">[[ social.handle ]]</p>
-        </a>
+    <!-- chamada final + redes -->
+    <section id="redes" class="pb-20 lg:pb-[100px]">
+      <img src="static/mascote-orelhas.png" alt="" class="block mx-auto w-[230px] -mb-[2px] select-none pointer-events-none">
+      <div class="cta-card rounded-[28px] border border-[#173327] px-6 py-16 lg:py-[84px] text-center">
+        <h2 class="text-[32px] lg:text-[48px] font-extrabold leading-[1.15] tracking-display">Seu próximo treino<br class="hidden sm:block"> começa com uma mensagem.</h2>
+        <p class="mt-4 text-[17px] text-muted">Dicas de treino e novidades do Arnaldo nas redes.</p>
+        <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-9 inline-flex items-center h-[52px] px-[30px] rounded-full bg-wa text-ink font-semibold text-[17px] hover:brightness-110 transition">Começar no WhatsApp →</a>
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a v-for="social in content.socials" :key="social.name" :href="social.url" target="_blank" rel="noopener" class="rounded-full border border-line px-[22px] py-[10px] text-[15px] text-muted hover:text-white hover:border-wa/60 transition">[[ social.name ]]</a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="border-t border-line py-8 text-center text-xs text-muted">
-    © [[ year ]] Arnaldo.gym.ai · Feito pra quem treina
+  <footer class="max-w-[1120px] mx-auto px-4 lg:px-0">
+    <div class="border-t border-line py-10 flex flex-col sm:flex-row gap-2 justify-between text-[14px] text-muted">
+      <span>© [[ year ]] Arnaldo.gym.ai</span>
+      <span>Feito pra quem treina</span>
+    </div>
   </footer>
 </div>
 
@@ -159,12 +209,11 @@
       return {
         content: {{ content | tojson }},
         links: [
-          { id: 'home', label: 'Home' },
           { id: 'funcionalidades', label: 'Funcionalidades' },
           { id: 'preco', label: 'Preço' },
           { id: 'redes', label: 'Redes' },
         ],
-        active: 'home',
+        active: null,
         menuOpen: false,
         year: new Date().getFullYear(),
       };
@@ -172,10 +221,12 @@
     mounted() {
       // destaca na navbar a seção que está na tela
       const observer = new IntersectionObserver(
-        (entries) => entries.forEach((e) => { if (e.isIntersecting) this.active = e.target.id; }),
+        (entries) => entries.forEach((e) => {
+          if (e.isIntersecting) this.active = this.links.some((l) => l.id === e.target.id) ? e.target.id : null;
+        }),
         { rootMargin: '-45% 0px -50% 0px' },
       );
-      this.links.forEach((l) => observer.observe(document.getElementById(l.id)));
+      document.querySelectorAll('section[id]').forEach((s) => observer.observe(s));
     },
   }).mount('#app');
 </script>
