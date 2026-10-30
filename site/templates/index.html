@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0B1118">
 <meta name="description" content="Arnaldo é um agente de IA no WhatsApp que registra seus treinos e controla sua carga por mensagem.">
 <title>Arnaldo.gym.ai · Seu parceiro de treino no WhatsApp</title>
-<link rel="icon" href="static/arnaldo.png">
+<link rel="icon" href="{{ asset('arnaldo.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -51,7 +51,7 @@
   <header class="sticky top-0 z-30 bg-ink/90 backdrop-blur">
     <nav class="max-w-[1120px] mx-auto px-4 lg:px-0 h-[76px] lg:h-[96px] flex items-center justify-between">
       <a href="#home" class="flex items-center">
-        <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="static/arnaldo-avatar.png" alt="" class="w-[80%] h-[80%]"></span>
+        <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="{{ asset('arnaldo-avatar.png') }}" alt="" class="w-[80%] h-[80%]"></span>
         <span class="ml-3 text-[17px] font-bold">Arnaldo</span>
         <span class="ml-3 text-[17px] text-muted">.gym.ai</span>
       </a>
@@ -96,11 +96,11 @@
       <!-- telefone com o mascote espiando por cima -->
       <div class="flex justify-center lg:justify-end lg:pr-[125px] pt-[120px]">
         <div class="relative w-full max-w-[330px]">
-          <img src="static/mascote-cabeca.png" alt="" class="absolute left-[64px] -top-[142px] w-[205px] select-none pointer-events-none">
+          <img src="{{ asset('mascote-cabeca.png') }}" alt="" class="absolute left-[64px] -top-[142px] w-[205px] select-none pointer-events-none">
           <div class="relative z-10 rounded-[36px] border border-line bg-phone p-[14px] glow">
             <div class="rounded-[26px] bg-screen px-[14px] pt-4 pb-5">
               <div class="flex items-center gap-3 pb-3 border-b border-line">
-                <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="static/arnaldo-avatar.png" alt="" class="w-[80%] h-[80%]"></span>
+                <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="{{ asset('arnaldo-avatar.png') }}" alt="" class="w-[80%] h-[80%]"></span>
                 <div class="leading-tight">
                   <div class="text-[15px] font-medium">Arnaldo</div>
                   <div class="text-[12px] text-wa">online</div>
@@ -174,13 +174,13 @@
           </ul>
           <a :href="content.whatsapp_url" target="_blank" rel="noopener" class="mt-10 h-[52px] flex items-center justify-center rounded-full font-semibold text-[16px] transition" :class="plan.highlight ? 'bg-wa text-ink hover:brightness-110' : 'border border-line hover:bg-line'">Começar</a>
         </article>
-        <img src="static/mascote-biceps.png" alt="" class="hidden lg:block absolute -right-[137px] top-[118px] w-[135px] select-none pointer-events-none">
+        <img src="{{ asset('mascote-biceps.png') }}" alt="" class="hidden lg:block absolute -right-[137px] top-[118px] w-[135px] select-none pointer-events-none">
       </div>
     </section>
 
     <!-- chamada final + redes -->
     <section id="redes" class="pb-20 lg:pb-[100px]">
-      <img src="static/mascote-orelhas.png" alt="" class="relative block mx-auto w-[230px] -mb-[16px] select-none pointer-events-none">
+      <img src="{{ asset('mascote-orelhas.png') }}" alt="" class="relative block mx-auto w-[230px] -mb-[16px] select-none pointer-events-none">
       <div class="cta-card relative z-10 rounded-[28px] border border-[#173327] px-6 py-16 lg:py-[84px] text-center">
         <h2 class="text-[32px] lg:text-[48px] font-extrabold leading-[1.15] tracking-display">Seu próximo treino<br class="hidden sm:block"> começa com uma mensagem.</h2>
         <p class="mt-4 text-[17px] text-muted">Dicas de treino e novidades do Arnaldo nas redes.</p>

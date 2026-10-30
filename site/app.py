@@ -74,6 +74,19 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
+def asset(path: str) -> str:
+    """URL de arquivo estático com a versão do arquivo. A Cloudflare manda o navegador guardar
+    imagens por horas: com a versão no endereço, um arquivo novo nunca fica preso no cache."""
+    try:
+        version = int((BASE_DIR / "static" / path).stat().st_mtime)
+    except FileNotFoundError:
+        return f"static/{path}"
+    return f"static/{path}?v={version}"
+
+
+templates.env.globals["asset"] = asset
+
+
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"content": CONTENT})
