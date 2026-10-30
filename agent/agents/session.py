@@ -8,7 +8,7 @@ from google.genai import types
 
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import _fix_whatsapp_bold, enter_idle, idle_menu
+from agent.shared import ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, idle_menu
 from agent.repos import session_repo
 from agent.schemas.replies import TextReply
 
@@ -41,16 +41,25 @@ def _system_prompt(ctx, facts_confirmed: bool = False) -> str:
     )
 
     facts_note = (
-        "\n- Uma confirmação com o nome do exercício, as séries e o progresso já foi (ou vai ser) "
+        "- Uma confirmação com o nome do exercício, as séries e o progresso já foi (ou vai ser) "
         "exibida automaticamente pelo sistema antes da sua resposta — NÃO repita o nome do "
         "exercício nem nenhum número nessa resposta, só reaja numa frase curta ou pergunte o que "
         "vem a seguir."
         if facts_confirmed else ""
     )
 
+    # só lista o que as ferramentas deste turno permitem (ver tools.session.build_declarations)
+    features = [("Registrar séries", "mandar exercício, carga e repetições, uma ou várias séries de uma vez (ex.: supino 80kg 8 reps)")]
+    if ctx.sets:
+        features.append(("Corrigir uma série", "apagar uma série registrada errada (eu peço confirmação antes)"))
+    features.append(("Ver exercícios do treino", "mostrar os exercícios de hoje e quantas séries faltam"))
+    if ctx.exercises:
+        features.append(("Ver desempenho anterior", "mostrar a carga e as repetições da última vez num exercício"))
+    features.append(("Finalizar treino", "encerrar o treino de hoje e salvar tudo"))
+
     return (
-        "Você é o assistente de um chatbot de treino no WhatsApp, numa sessão de treino ativa.\n\n"
-        f"{plan_line}\n"
+        arnaldo_header("no meio de um treino, registrando as séries.", features)
+        + f"{plan_line}\n"
         f"Exercícios desta sessão, com os IDs entre colchetes: {exercises_line}\n"
         f"Séries já registradas, com os IDs entre colchetes: {sets_line}\n"
         f"{pending_line}\n\n"
@@ -77,11 +86,12 @@ def _system_prompt(ctx, facts_confirmed: bool = False) -> str:
         "de hoje e voltar pro menu principal.\n"
         "- NUNCA mencione o identificador técnico (como 'ex:3' ou 'set:5') na resposta final — "
         "fale sempre só pelo nome do exercício.\n"
-        "- Seja sucinto e direto. Negrito no estilo WhatsApp é um asterisco só de cada lado, colado "
-        "na palavra (*assim*), nunca dois.\n"
         "- Se a mensagem não corresponder a nenhuma ferramenta (ex.: uma dúvida genérica), responda "
-        "direto em texto, sem chamar ferramenta nenhuma."
-        f"{facts_note}"
+        "direto em texto, sem chamar ferramenta nenhuma.\n"
+        "- Num treino com plano, quando um exercício bater a meta de séries, incentive a passar pro "
+        "próximo da lista; quando todos baterem, lembre que ele pode *Finalizar treino*.\n"
+        + ARNALDO_STYLE_RULES
+        + f"{facts_note}"
     )
 
 

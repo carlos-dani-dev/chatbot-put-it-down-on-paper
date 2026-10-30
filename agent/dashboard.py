@@ -4,9 +4,8 @@ leitura, sem LLM nenhuma no meio: tudo vem direto de consultas no banco.
 Sessões de planos excluídos (archived_at preenchido) ficam de fora de tudo,
 junto com as séries delas; treino livre (sem plano) continua aparecendo.
 """
-import math
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -17,9 +16,6 @@ from .models import Plan, PlanExercise, User, WorkoutSession, WorkoutSet
 LOCAL_TZ = ZoneInfo("America/Sao_Paulo")
 FREE_TRAINING_LABEL = "Treino livre"
 PODIUM_SIZE = 3
-FREQUENCY_WEEKS = 8
-HEATMAP_WEEKS = 12
-VOLUME_SESSIONS = 12
 RECORDS_LIMIT = 5
 MAX_VALID_SESSION_MINUTES = 240  # acima disso o usuário esqueceu de finalizar o treino
 WEEKDAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
@@ -70,10 +66,6 @@ def _session_minutes(ws: WorkoutSession) -> int | None:
 
 def _epley_1rm(weight: float, reps: int) -> float:
     return weight if reps <= 1 else weight * (1 + reps / 30)
-
-
-def _week_start(d: date) -> date:
-    return d - timedelta(days=d.weekday())
 
 
 def _plan_name(ws: WorkoutSession) -> str:
@@ -127,7 +119,6 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         return round(done / sum(targets.values()) * 100)
 
     today = datetime.now(LOCAL_TZ).date()
-    this_week = _week_start(today)
 
     def status(ws: WorkoutSession) -> str | None:
         if ws.ended_at is not None:
@@ -234,7 +225,12 @@ def build_dashboard_context(db: Any, user: User) -> dict:
     for name in sorted(plan_last_seen, key=plan_last_seen.get, reverse=True):
         seen = plan_exercise_seen[name]
         ordered = sorted(seen, key=lambda eid: (seen[eid], len(history[eid]["points"])), reverse=True)
-        plans.append({"name": name, "exercises": [history[eid] for eid in ordered]})
+        plans.append({
+            "name": name,
+            "sessions": plan_session_count[name],
+            "last_label": _format_relative_date(sessions[plan_last_seen[name]].started_at),
+            "exercises": [history[eid] for eid in ordered],
+        })
 
     # --- aderência por plano (séries feitas vs. meta do plano) ---
     adherence_by_plan: dict[str, list[int]] = defaultdict(list)
@@ -250,44 +246,6 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         key=lambda a: a["pct"],
         reverse=True,
     )
-
-    # --- frequência semanal (últimas N semanas) ---
-    frequency = []
-    for i in range(FREQUENCY_WEEKS - 1, -1, -1):
-        week = this_week - timedelta(weeks=i)
-        week_sessions = [ws for ws in sessions if _week_start(_local(ws.started_at).date()) == week]
-        frequency.append({
-            "label": "Esta" if i == 0 else week.strftime("%d/%m"),
-            "count": len(week_sessions),
-            "volume": round(sum(volume_by_session[ws.id] for ws in week_sessions)),
-        })
-
-    # --- mapa de calor (últimas semanas, uma coluna por semana, seg→dom) ---
-    volume_by_day: dict[date, float] = defaultdict(float)
-    for ws in sessions:
-        volume_by_day[_local(ws.started_at).date()] += volume_by_session[ws.id]
-    max_day_volume = max(volume_by_day.values(), default=0) or 1
-    heatmap_start = this_week - timedelta(weeks=HEATMAP_WEEKS - 1)
-    heatmap = []
-    for w in range(HEATMAP_WEEKS):
-        column = []
-        for d in range(7):
-            day = heatmap_start + timedelta(weeks=w, days=d)
-            vol = volume_by_day.get(day, 0)
-            level = 0 if vol <= 0 else max(1, min(4, math.ceil(vol / max_day_volume * 4)))
-            column.append({
-                "level": level,
-                "future": day > today,
-                "title": f"{day.strftime('%d/%m')} · " + (f"{_format_kg(vol)} kg" if vol else "sem treino"),
-            })
-        heatmap.append(column)
-    trained_days = sum(1 for day in volume_by_day if day >= heatmap_start)
-
-    # --- volume por treino (últimas sessões) ---
-    volume_series = [
-        {"label": _local(ws.started_at).strftime("%d/%m"), "volume": round(volume_by_session[ws.id]), "plan": _plan_name(ws)}
-        for ws in sessions[-VOLUME_SESSIONS:]
-    ]
 
     # --- treinos mais feitos (pódio) ---
     ranking = sorted(plan_session_count.items(), key=lambda kv: kv[1], reverse=True)[:PODIUM_SIZE]
@@ -306,10 +264,5 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         "plans": plans,
         "records": list(reversed(records))[:RECORDS_LIMIT],
         "adherence": adherence,
-        "frequency": frequency,
-        "heatmap": heatmap,
-        "heatmap_weeks": HEATMAP_WEEKS,
-        "trained_days": trained_days,
-        "volume_series": volume_series,
         "podium": podium,
     }

@@ -6,7 +6,14 @@ from google.genai import types
 
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import _fix_whatsapp_bold, enter_idle, enter_planning
+from agent.shared import (
+    ARNALDO_STYLE_RULES,
+    SESSION_SETUP_FEATURES,
+    _fix_whatsapp_bold,
+    arnaldo_header,
+    enter_idle,
+    enter_planning,
+)
 from agent.schemas.replies import TextReply
 
 from ..tools import session_setup as tools_mod
@@ -22,9 +29,8 @@ _MAX_TOOL_ROUNDS = 3
 def _system_prompt(ctx) -> str:
     plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     return (
-        "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está escolhendo "
-        "como começar um treino agora.\n\n"
-        f"Planos de treino salvos: {plans_line}\n\n"
+        arnaldo_header("escolhendo como começar o treino de agora.", SESSION_SETUP_FEATURES)
+        + f"Planos de treino salvos: {plans_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
         "- Pra se referir a um plano específico, use SEMPRE o plan_id exato oferecido pela "
@@ -39,9 +45,9 @@ def _system_prompt(ctx) -> str:
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
         "só pelo nome.\n"
-        "- Negrito estilo WhatsApp é um asterisco só de cada lado, colado na palavra (*assim*), "
-        "nunca dois.\n"
-        "- Se não entender, peça pra escolher um dos planos ou treino livre."
+        "- Se não entender, peça pra escolher entre *Treinar com um plano* (citando os nomes dos "
+        "planos salvos) ou *Treino livre*.\n"
+        + ARNALDO_STYLE_RULES
     )
 
 
@@ -94,13 +100,14 @@ def handle(db, user, text, button_id=None):
 
         if result.get("ok") and result.get("next_state") == "session":
             plan_name = result.get("plan_name")
-            if plan_name:
-                msg = (
-                    f"💪 Treino *{plan_name}* iniciado! Bora!\n"
-                    "Começa me mandando o exercício, o peso que você usou e quantas séries você fez."
-                )
-            else:
-                msg = "💪 Treino livre iniciado! Bora!"
+            title = f"Treino *{plan_name}*" if plan_name else "Treino livre"
+            msg = (
+                f"💪 {title} iniciado! Bora!\n\n"
+                "*Registrar séries*: me manda o exercício, a carga e as repetições "
+                "(ex.: supino 80kg 8 reps)\n"
+                + ("*Ver desempenho anterior*: pergunta como foi da última vez num exercício\n" if plan_name else "")
+                + "*Finalizar treino*: é só avisar quando acabar"
+            )
             return TextReply(msg), "session"
 
         contents.append(candidate.content)

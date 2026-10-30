@@ -6,7 +6,7 @@ from google.genai import types
 
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import _fix_whatsapp_bold, enter_idle
+from agent.shared import ARNALDO_STYLE_RULES, ONBOARDING_FEATURES, _fix_whatsapp_bold, arnaldo_header, enter_idle
 from agent.schemas.replies import TextReply
 
 from ..tools import onboarding as tools_mod
@@ -18,32 +18,31 @@ _MODEL = "gemini-flash-lite-latest"
 _TEMPERATURE = 0.1
 
 _WELCOME_MESSAGE = (
-    "💪 Eai gym bro, seja bem vindo!\n\n"
+    "💪 Eai, gym bro! Eu sou o *Arnaldo*, seu parceiro pra controlar carga e registrar treinos.\n\n"
     "*Registre treinos*, séries e cargas em linguagem natural\n"
-    "*Veja seus progressos* em tempo real\n"
-    "*Compartilhe* seus resultados com amigos\n\n"
+    "*Crie planos de treino* ou treine livre\n"
+    "*Acompanhe sua evolução* com recordes e gráficos\n\n"
     "Vamos começar?"
 )
 
 
 def _system_prompt(ctx) -> str:
     return (
-        "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está no meio "
-        "do processo de boas-vindas (onboarding). O app já foi apresentado e perguntou se "
-        "ele quer começar.\n\n"
-        f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
+        arnaldo_header(
+            "nas boas-vindas (onboarding). Você já se apresentou e perguntou se ele quer começar.",
+            ONBOARDING_FEATURES,
+        )
+        + f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
         "- Se ele confirmar que quer começar, chame confirm_start.\n"
         "- Se ele disser que não quer começar agora, chame decline_start.\n"
-        "- Se for uma pergunta sobre como o app funciona, responda diretamente em texto, "
-        "breve, usando só: registra treinos por mensagem de texto normal; uma IA interpreta "
-        "exercício/peso/reps; dá pra criar plano com antecedência ou treinar livre; o "
-        "progresso fica salvo automaticamente — e termine perguntando se ele quer começar.\n"
+        "- Se for uma pergunta sobre como você funciona, responda direto em texto, breve, usando "
+        "só as funcionalidades da lista acima (em negrito) — e termine perguntando se ele quer "
+        "*Começar agora*.\n"
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou, nunca invente "
         "fatos sobre o que já aconteceu.\n"
-        "- Negrito estilo WhatsApp é um asterisco só de cada lado, colado na palavra "
-        "(*assim*), nunca dois.\n"
-        "- Se não for nada disso, responda em texto pedindo pra ele confirmar se quer começar."
+        "- Se não for nada disso, responda em texto pedindo pra ele confirmar se quer começar.\n"
+        + ARNALDO_STYLE_RULES
     )
 
 

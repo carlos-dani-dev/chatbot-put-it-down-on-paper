@@ -6,7 +6,15 @@ from google.genai import types
 
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import _fix_whatsapp_bold, enter_planning, enter_session_setup, idle_menu
+from agent.shared import (
+    ARNALDO_STYLE_RULES,
+    IDLE_FEATURES,
+    _fix_whatsapp_bold,
+    arnaldo_header,
+    enter_planning,
+    enter_session_setup,
+    idle_menu,
+)
 from agent.schemas.replies import CtaUrlReply, TextReply
 
 from ..tools import idle as tools_mod
@@ -23,8 +31,8 @@ _MAX_TOOL_ROUNDS = 3
 def _system_prompt(ctx) -> str:
     plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     return (
-        "Você é o assistente de um chatbot de treino no WhatsApp, no menu principal.\n\n"
-        f"Planos de treino salvos do usuário: {plans_line}\n\n"
+        arnaldo_header("no menu principal.", IDLE_FEATURES)
+        + f"Planos de treino salvos do usuário: {plans_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
         "- Pra se referir a um plano específico, use SEMPRE o plan_id exato oferecido pela "
@@ -40,9 +48,11 @@ def _system_prompt(ctx) -> str:
         "nomes de planos ou exercícios que não vieram de um resultado de ferramenta.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
         "só pelo nome.\n"
-        "- Negrito estilo WhatsApp é um asterisco só de cada lado, colado na palavra (*assim*), "
-        "nunca dois.\n"
-        "- Se a mensagem for uma pergunta genérica sobre o app, responda direto em texto."
+        "- Se a mensagem for uma pergunta genérica sobre o que você faz, responda direto em texto "
+        "usando as funcionalidades da lista acima.\n"
+        "- Depois de listar planos ou exercícios, sugira o passo seguinte natural (ex.: *Começar "
+        "um treino* com aquele plano, ou *Editar ou excluir um plano*).\n"
+        + ARNALDO_STYLE_RULES
     )
 
 

@@ -23,7 +23,6 @@
     --accent-bright: #38E8DC;
     --accent-bar: rgba(14, 165, 160, 0.45);
     --good: #22C55E;
-    --heat-1: #115E59;
     --heat-2: #0D9488;
     --heat-3: #14B8A6;
     --heat-4: #5EEAD4;
@@ -151,37 +150,22 @@
   .meter .note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
   .adherence-card .meter:first-child { margin-top: 0; }
 
-  /* ---------- heatmap ---------- */
-  .heatmap { display: grid; grid-template-columns: 24px repeat({{ heatmap_weeks | default(12) }}, 1fr); gap: 4px; }
-  .heatmap .day-label { font-size: 9px; color: var(--text-muted); display: flex; align-items: center; }
-  .heatmap .col { display: contents; }
-  .cell { aspect-ratio: 1; border-radius: 4px; background: var(--surface-3); }
-  .cell.l1 { background: var(--heat-1); }
-  .cell.l2 { background: var(--heat-2); }
-  .cell.l3 { background: var(--heat-3); }
-  .cell.l4 { background: var(--heat-4); }
-  .cell.future { background: transparent; border: 1px dashed var(--surface-3); }
-  .heat-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 10px; color: var(--text-muted); margin-top: 10px; }
-  .heat-legend .cell { width: 11px; height: 11px; aspect-ratio: auto; }
-  .heat-legend .total { margin-right: auto; }
-
-  /* ---------- charts ---------- */
-  .chart-wide { position: relative; height: 150px; margin-top: 4px; }
+  /* ---------- gráfico de exercício ---------- */
   .chart-box { position: relative; flex: 1; min-width: 0; height: 96px; overflow: hidden; }
   .chart-hint { flex: 1; font-size: 12px; color: var(--text-muted); border: 1px dashed var(--surface-3); border-radius: 12px; padding: 14px 12px; text-align: center; }
 
-  /* ---------- tabs ---------- */
-  .tab-input { display: none; }
-  .tab-labels { display: flex; gap: 4px; background: var(--surface-2); border-radius: 14px 14px 0 0; padding: 6px 6px 0; overflow-x: auto; scrollbar-width: none; }
-  .tab-labels::-webkit-scrollbar { display: none; }
-  .tab-labels label { flex: 1 0 auto; min-width: 88px; text-align: center; padding: 12px 10px; border-radius: 12px 12px 0 0; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: .04em; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
-  .tab-panel { display: none; border: 1px solid var(--surface-3); border-top: none; border-radius: 0 0 18px 18px; padding: 14px; }
-  .tabs.single .tab-panel { display: block; border-radius: 18px; border-top: 1px solid var(--surface-3); }
+  /* ---------- progresso: plano -> exercício -> progressão ---------- */
+  details.plan-item { background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: 18px; margin-bottom: 10px; overflow: hidden; }
+  details.plan-item > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 16px; }
+  details.plan-item > summary::-webkit-details-marker { display: none; }
+  details.plan-item[open] > summary { border-bottom: 1px solid var(--surface-3); }
+  details.plan-item[open] > summary .chevron { transform: rotate(90deg); }
+  .plan-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .plan-info .title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .04em; }
+  .plan-info .meta { font-size: 12px; color: var(--text-secondary); }
+  .plan-exercises { padding: 10px; }
 
-  /* ---------- exercise cards ---------- */
-  .exercise-featured, details.exercise-collapsed { background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: 16px; margin-bottom: 10px; }
-  .exercise-featured { padding: 16px; }
-  .exercise-featured .name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: .03em; }
+  /* ---------- exercício ---------- */
   .ex-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 2px 0 12px; font-size: 12px; }
   .ex-meta .tag { color: var(--accent-bright); font-weight: 600; }
   .ex-meta .delta { color: var(--text-secondary); }
@@ -194,13 +178,14 @@
   .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--surface-3); }
   .mini-stats .label { font-size: 10px; color: var(--text-muted); letter-spacing: .04em; }
   .mini-stats .value { font-size: 14px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
-  details.exercise-collapsed { overflow: hidden; }
-  details.exercise-collapsed > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+  details.exercise-collapsed { background: var(--surface-1); border: 1px solid var(--surface-3); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+  details.exercise-collapsed:last-child { margin-bottom: 0; }
+  details.exercise-collapsed > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px; }
   details.exercise-collapsed > summary::-webkit-details-marker { display: none; }
   details.exercise-collapsed > summary .title { flex: 1; min-width: 0; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: .03em; }
   details.exercise-collapsed > summary .peek { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
   details.exercise-collapsed[open] > summary .chevron { transform: rotate(90deg); }
-  details.exercise-collapsed .inner { padding: 0 16px 16px; }
+  details.exercise-collapsed .inner { padding: 0 14px 14px; }
 
   /* ---------- recordes ---------- */
   .record { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--surface-3); }
@@ -267,10 +252,8 @@
     </div>
   </div>
   {% if has_data %}
-  <a href="#calendario">Calendário</a>
   <a href="#recente">Treino mais recente</a>
-  <a href="#consistencia">Consistência</a>
-  <a href="#volume">Volume por treino</a>
+  <a href="#calendario">Calendário</a>
   <a href="#progresso">Progresso por exercício</a>
   {% if records %}<a href="#recordes">Recordes recentes</a>{% endif %}
   {% if adherence %}<a href="#aderencia">Aderência aos planos</a>{% endif %}
@@ -312,23 +295,6 @@
   <div class="empty-state">Nenhum treino concluído ainda. Assim que você registrar uma série, seus resultados aparecem aqui.</div>
   {% else %}
 
-  {# ===================== CALENDÁRIO ===================== #}
-  <h2 class="section-title" id="calendario">CALENDÁRIO</h2>
-  <div class="card calendar">
-    <div class="cal-head">
-      <button type="button" class="cal-nav" id="cal-prev" aria-label="Mês anterior">
-        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="cal-title" id="cal-title" aria-live="polite"></div>
-      <button type="button" class="cal-nav" id="cal-next" aria-label="Próximo mês">
-        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
-    <div class="cal-weekdays"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
-    <div class="cal-grid" id="cal-grid"></div>
-    <div class="cal-foot" id="cal-foot"></div>
-  </div>
-
   {# ===================== TREINO MAIS RECENTE ===================== #}
   <h2 class="section-title" id="recente">TREINO MAIS RECENTE</h2>
   <details class="card last-session-card">
@@ -369,76 +335,46 @@
     </div>
   </details>
 
-  {# ===================== CONSISTÊNCIA ===================== #}
-  <h2 class="section-title" id="consistencia">CONSISTÊNCIA</h2>
-  <div class="card">
-    <div class="heatmap" role="img" aria-label="Dias treinados nas últimas {{ heatmap_weeks }} semanas">
-      {% for d in range(7) %}
-        <div class="day-label" style="grid-column: 1; grid-row: {{ d + 1 }};">{{ ["seg", "", "qua", "", "sex", "", "dom"][d] }}</div>
-      {% endfor %}
-      {% for column in heatmap %}
-        {% set w = loop.index0 %}
-        {% for c in column %}
-          <div class="cell {{ 'future' if c.future else 'l' ~ c.level }}" style="grid-column: {{ w + 2 }}; grid-row: {{ loop.index }};" title="{{ c.title }}"></div>
-        {% endfor %}
-      {% endfor %}
+  {# ===================== CALENDÁRIO ===================== #}
+  <h2 class="section-title" id="calendario">CALENDÁRIO</h2>
+  <div class="card calendar">
+    <div class="cal-head">
+      <button type="button" class="cal-nav" id="cal-prev" aria-label="Mês anterior">
+        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="cal-title" id="cal-title" aria-live="polite"></div>
+      <button type="button" class="cal-nav" id="cal-next" aria-label="Próximo mês">
+        <svg width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <div class="heat-legend">
-      <span class="total">{{ trained_days }} {{ "dia treinado" if trained_days == 1 else "dias treinados" }} em {{ heatmap_weeks }} semanas</span>
-      menos <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> mais
-    </div>
-  </div>
-  <div class="card" style="margin-top: 10px;">
-    <div class="section-sub" style="margin: 0 0 6px; text-align: left;">Treinos por semana</div>
-    <div class="chart-wide"><canvas data-chart="frequency" role="img" aria-label="Treinos por semana nas últimas semanas"></canvas></div>
-  </div>
-
-  {# ===================== VOLUME ===================== #}
-  <h2 class="section-title" id="volume">VOLUME POR TREINO</h2>
-  <p class="section-sub">Carga × repetições somadas em cada treino</p>
-  <div class="card">
-    <div class="chart-wide"><canvas data-chart="volume" role="img" aria-label="Volume levantado nos últimos treinos"></canvas></div>
+    <div class="cal-weekdays"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-foot" id="cal-foot"></div>
   </div>
 
   {# ===================== PROGRESSO ===================== #}
   <h2 class="section-title" id="progresso">PROGRESSO POR EXERCÍCIO</h2>
-  <div class="tabs {{ 'single' if plans | length <= 1 else '' }}">
-    {% if plans | length > 1 %}
-    {% for p in plans %}
-    <input type="radio" name="plan-tab" id="tab-{{ loop.index0 }}" class="tab-input" {{ "checked" if loop.first else "" }}>
-    {% endfor %}
-    <div class="tab-labels">
-      {% for p in plans %}<label for="tab-{{ loop.index0 }}">{{ p.name | upper }}</label>{% endfor %}
-    </div>
-    {% endif %}
-
-    {% for p in plans %}
-    {% set plan_idx = loop.index0 %}
-    <div class="tab-panel" data-for="{{ plan_idx }}">
+  <p class="section-sub">Toque num plano e depois num exercício</p>
+  {% for p in plans %}
+  {% set plan_idx = loop.index0 %}
+  <details class="plan-item">
+    <summary>
+      <span class="plan-info">
+        <span class="title">{{ p.name | upper }}</span>
+        <span class="meta">{{ p.exercises | length }} {{ "exercício" if p.exercises | length == 1 else "exercícios" }} · {{ p.sessions }} {{ "treino" if p.sessions == 1 else "treinos" }} · último {{ p.last_label | lower }}</span>
+      </span>
+      {{ chevron_icon() }}
+    </summary>
+    <div class="plan-exercises">
       {% for ex in p.exercises %}
-        {% set chart_id = plan_idx ~ "-" ~ loop.index0 %}
-        {% if loop.first %}
-        <div class="exercise-featured">
-          <div class="name">{{ ex.name | upper }}</div>
-          {{ exercise_body(ex, chart_id) }}
-        </div>
-        {% else %}
-        <details class="exercise-collapsed">
-          <summary><span class="title">{{ ex.name | upper }}</span><span class="peek">{{ ex.best_label }}kg</span>{{ chevron_icon() }}</summary>
-          <div class="inner">{{ exercise_body(ex, chart_id) }}</div>
-        </details>
-        {% endif %}
+      <details class="exercise-collapsed">
+        <summary><span class="title">{{ ex.name | upper }}</span><span class="peek">{{ ex.best_label }}kg</span>{{ chevron_icon() }}</summary>
+        <div class="inner">{{ exercise_body(ex, plan_idx ~ "-" ~ loop.index0) }}</div>
+      </details>
       {% endfor %}
     </div>
-    {% endfor %}
-
-    <style>
-      {% for p in plans %}
-      #tab-{{ loop.index0 }}:checked ~ .tab-panel[data-for="{{ loop.index0 }}"] { display: block; }
-      #tab-{{ loop.index0 }}:checked ~ .tab-labels label[for="tab-{{ loop.index0 }}"] { background: var(--text-primary); color: var(--surface-1); border-radius: 12px; }
-      {% endfor %}
-    </style>
-  </div>
+  </details>
+  {% endfor %}
 
   {# ===================== RECORDES ===================== #}
   {% if records %}
@@ -645,8 +581,6 @@
 
   // ================= gráficos =================
   const PLANS = {{ plans | tojson }};
-  const FREQUENCY = {{ frequency | tojson }};
-  const VOLUME = {{ volume_series | tojson }};
 
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const charts = new Map();
@@ -660,12 +594,6 @@
     displayColors: false,
     padding: 10,
   });
-  const fmtKg = (v) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : `${v}`;
-  const axisTicks = () => ({ color: css('--text-muted'), font: { size: 10, family: 'Montserrat' }, maxRotation: 0, autoSkipPadding: 8 });
-
-  // barra destacada = período atual (accent); anteriores em tom de-ênfase
-  const highlightLast = (n) => Array.from({ length: n }, (_, i) => i === n - 1 ? css('--accent-bright') : css('--accent-bar'));
-
   const builders = {
     exercise(canvas) {
       const [planIdx, exIdx] = canvas.dataset.chartId.split('-').map(Number);
@@ -713,67 +641,6 @@
         },
       });
     },
-
-    frequency(canvas) {
-      return new Chart(canvas, {
-        type: 'bar',
-        data: {
-          labels: FREQUENCY.map(w => w.label),
-          datasets: [{ data: FREQUENCY.map(w => w.count), backgroundColor: highlightLast(FREQUENCY.length), borderRadius: 4, maxBarThickness: 22 }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              ...tooltipBase(),
-              callbacks: {
-                title: (items) => items[0].label === 'Esta' ? 'Esta semana' : `Semana de ${items[0].label}`,
-                label: (c) => {
-                  const w = FREQUENCY[c.dataIndex];
-                  return [`${w.count} ${w.count === 1 ? 'treino' : 'treinos'}`, `${fmtKg(w.volume)}kg de volume`];
-                },
-              },
-            },
-          },
-          scales: {
-            x: { grid: { display: false }, border: { display: false }, ticks: axisTicks() },
-            y: { display: false, beginAtZero: true, suggestedMax: 3 },
-          },
-        },
-      });
-    },
-
-    volume(canvas) {
-      return new Chart(canvas, {
-        type: 'bar',
-        data: {
-          labels: VOLUME.map(v => v.label),
-          datasets: [{ data: VOLUME.map(v => v.volume), backgroundColor: highlightLast(VOLUME.length), borderRadius: 4, maxBarThickness: 22 }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              ...tooltipBase(),
-              callbacks: {
-                title: (items) => `${items[0].label} · ${VOLUME[items[0].dataIndex].plan}`,
-                label: (c) => `${fmtKg(c.parsed.y)}kg`,
-              },
-            },
-          },
-          scales: {
-            x: { grid: { display: false }, border: { display: false }, ticks: axisTicks() },
-            y: {
-              beginAtZero: true, border: { display: false },
-              grid: { color: css('--surface-3'), lineWidth: 1 },
-              ticks: { ...axisTicks(), maxTicksLimit: 4, callback: (v) => fmtKg(v) },
-            },
-          },
-        },
-      });
-    },
   };
 
   function initChart(canvas) {
@@ -782,14 +649,13 @@
     if (chart) charts.set(canvas, chart);
   }
 
-  // só desenha o que está visível (aba/acordeão escondido nasce com tamanho zero) e depois
+  // só desenha o que está visível (acordeão fechado nasce com tamanho zero) e depois
   // das fontes carregarem (senão o layout muda depois e corta a borda dos gráficos)
   function initVisible() {
     document.querySelectorAll('canvas[data-chart]').forEach((c) => { if (c.offsetParent !== null) initChart(c); });
   }
 
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(initVisible);
-  document.querySelectorAll('.tab-input').forEach((r) => r.addEventListener('change', () => requestAnimationFrame(initVisible)));
   document.querySelectorAll('details').forEach((d) => d.addEventListener('toggle', () => requestAnimationFrame(initVisible)));
 </script>
 {% endif %}

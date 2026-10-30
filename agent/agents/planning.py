@@ -6,7 +6,7 @@ from google.genai import types
 
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import _fix_whatsapp_bold, enter_idle, enter_session_setup
+from agent.shared import ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, enter_session_setup
 from agent.schemas.replies import TextReply
 
 from ..tools import planning as tools_mod
@@ -32,10 +32,27 @@ def _system_prompt(ctx) -> str:
         if ctx.pending_action else "Nenhuma ação pendente de confirmação agora."
     )
 
+    if ctx.draft:
+        features = [
+            ("Adicionar exercícios", "mandar mais exercícios com a quantidade de séries pra entrar no plano"),
+            ("Salvar o plano", "guardar o plano de vez pra usar nos treinos"),
+            ("Descartar o plano", "jogar fora o rascunho sem salvar"),
+        ]
+    else:
+        features = [
+            ("Criar um plano", "mandar o nome do plano e os exercícios com a quantidade de séries (ex.: Peito: supino 3 séries)"),
+        ]
+    if ctx.plans:
+        features += [
+            ("Ver meus planos", "listar os planos salvos"),
+            ("Ver exercícios de um plano", "mostrar o que tem em um plano salvo"),
+            ("Excluir um plano", "apagar um plano salvo (eu peço confirmação antes)"),
+        ]
+    features.append(("Começar um treino", "parar de planejar e ir treinar agora"))
+
     return (
-        "Você é o assistente de um chatbot de treino no WhatsApp, no fluxo de planejamento "
-        "de um plano de treino.\n\n"
-        f"Planos salvos: {plans_line}\n"
+        arnaldo_header("planejando planos de treino.", features)
+        + f"Planos salvos: {plans_line}\n"
         f"{draft_line}\n"
         f"{pending_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
@@ -60,9 +77,11 @@ def _system_prompt(ctx) -> str:
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou de verdade.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
         "só pelo nome.\n"
-        "- Negrito estilo WhatsApp é um asterisco só de cada lado, colado na palavra (*assim*), "
-        "nunca dois.\n"
-        "- Se não for nada disso (ex.: dúvida genérica), responda direto em texto."
+        "- Depois de adicionar exercícios, mostre como o plano está e lembre que ele pode "
+        "*Adicionar exercícios* ou *Salvar o plano*. Depois de salvar, lembre que ele pode "
+        "*Começar um treino* com ele.\n"
+        "- Se não for nada disso (ex.: dúvida genérica), responda direto em texto.\n"
+        + ARNALDO_STYLE_RULES
     )
 
 

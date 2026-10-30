@@ -28,34 +28,90 @@ def _generate(prompt: str) -> str:
     return _fix_whatsapp_bold(llm.generate(prompt))
 
 
+# --------------------------------------------------------------------------
+# Persona e funcionalidades — base de todos os prompts. Cada estado declara o
+# que o usuário consegue fazer ali (nome em negrito + como pedir), e a LLM é
+# instruída a lembrar o usuário dessas possibilidades.
+# --------------------------------------------------------------------------
+
+ONBOARDING_FEATURES = [
+    ("Registrar treinos", "mandar o exercício, a carga e as repetições em texto normal (ex.: supino 80kg 8 reps) que eu anoto tudo"),
+    ("Criar planos de treino", "montar planos com os exercícios e a meta de séries de cada um"),
+    ("Treino livre", "registrar um treino sem plano nenhum"),
+    ("Acompanhar a evolução", "ver recordes, melhor carga e uma página de resultados com calendário e gráficos"),
+    ("Começar agora", "é só confirmar que quer começar"),
+]
+
+IDLE_FEATURES = [
+    ("Começar um treino", "escolher um plano salvo ou fazer um treino livre e registrar as séries"),
+    ("Criar um plano", "montar um plano novo com exercícios e meta de séries"),
+    ("Ver meus planos", "listar os planos salvos"),
+    ("Ver exercícios de um plano", "mostrar o que tem em um plano salvo"),
+    ("Editar ou excluir um plano", "mexer em um plano que já existe"),
+    ("Ver resultados", "receber o link da página com calendário de treinos, progressão por exercício e recordes"),
+]
+
+SESSION_SETUP_FEATURES = [
+    ("Treinar com um plano", "escolher um dos planos salvos pra seguir hoje"),
+    ("Treino livre", "treinar sem plano e registrar o que for fazendo"),
+    ("Mexer nos planos", "criar, editar ou excluir um plano antes de treinar"),
+    ("Voltar", "voltar pro menu principal"),
+]
+
+ARNALDO_STYLE_RULES = (
+    "- É MUITO importante lembrar o usuário das funcionalidades e possibilidades: sempre que "
+    "fizer sentido, termine a resposta sugerindo o próximo passo mais útil, citando de 1 a 3 "
+    "funcionalidades da lista acima com o nome em *negrito* (ex.: *Ver resultados*). Escolha só "
+    "as que combinam com o momento — nunca despeje a lista inteira de uma vez.\n"
+    "- Use emojis, mas com moderação: 1 ou 2 por mensagem, no máximo (ex.: 💪 🏋️ 📈 ✅ 📋), "
+    "sempre combinando com o conteúdo — nunca encha a mensagem de emojis.\n"
+    "- Negrito no WhatsApp é um asterisco só de cada lado, colado na palavra (*assim*), nunca "
+    "dois e nunca com espaço entre o asterisco e a palavra.\n"
+    "- Seja sucinto: mensagens curtas, fáceis de ler no celular.\n"
+)
+
+
+def arnaldo_header(where: str, features: list[tuple[str, str]]) -> str:
+    """Abertura dos prompts: quem é o Arnaldo, onde o usuário está e o que ele pode fazer ali."""
+    features_text = "\n".join(f"- *{name}*: {how}" for name, how in features)
+    return (
+        "Você é o *Arnaldo* 💪, um agente de IA no WhatsApp cuja missão é facilitar o controle de "
+        "carga e o registro de treinos de musculação. O usuário fala em linguagem natural e você "
+        "organiza, registra e acompanha a evolução dele. Fale como um parceiro de treino: direto, "
+        "animado e sem enrolação.\n\n"
+        f"Onde o usuário está agora: {where}\n\n"
+        "O que ele pode fazer neste momento (ao sugerir, use estes nomes em negrito):\n"
+        f"{features_text}\n\n"
+    )
+
+
 _ENTER_PLANNING_PROMPT = (
-    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário quer criar um "
-    "plano de treino novo.\n\n"
-    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    arnaldo_header(
+        "começando a criar um plano de treino novo.",
+        [
+            ("Criar o plano", "me mandar o nome do plano e os exercícios com a quantidade de séries (ex.: Peito: supino 3 séries, crucifixo 3 séries)"),
+            ("Ver meus planos", "listar os planos que já estão salvos"),
+            ("Começar um treino", "desistir de planejar e ir direto treinar"),
+        ],
+    )
+    + "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "Planos de treino que ele já tem salvos (pode estar vazio): {plans}\n\n"
     "{note}"
-    "Escreva a próxima mensagem do bot, respeitando:\n"
-    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
+    "Escreva a próxima mensagem do Arnaldo, respeitando:\n"
     "- Se ele já tiver planos salvos, cite os nomes deles.\n"
-    "- É de suma importância pedir SEMPRE o nome do plano novo, os exercícios e a"
+    "- É de suma importância pedir SEMPRE o nome do plano novo, os exercícios e a "
     "quantidade de séries para cada um deles — sem isso o plano não pode ser criado.\n"
-    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
-    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
-    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+    + ARNALDO_STYLE_RULES
 )
 
 _IDLE_MENU_PROMPT = (
-    "Você é o assistente de um chatbot de treino no WhatsApp. O usuário está de volta "
-    "ao menu principal.\n\n"
-    "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    arnaldo_header("no menu principal.", IDLE_FEATURES)
+    + "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
     "{intro}"
-    "Escreva a próxima mensagem do bot, respeitando:\n"
-    "- Seja sucinto e direto ao ponto, sem enrolação.\n"
-    "- É fundamental perguntar se ele quer *Planejar um treino* ou *Começar uma sessão "
-    "de treino* — escreva essas duas opções exatamente assim, em negrito.\n"
-    "- O WhatsApp usa um asterisco só para negrito (*assim*), nunca dois (**assim** não funciona). "
-    "O asterisco tem que colar direto na primeira e na última letra do trecho, sem espaço "
-    "nenhum entre o asterisco e a palavra (nunca * assim*, *assim * ou * assim *)."
+    "Escreva a próxima mensagem do Arnaldo, respeitando:\n"
+    "- É fundamental perguntar o que ele quer fazer, destacando principalmente *Começar um "
+    "treino* e *Criar um plano*, e lembrando que ele pode *Ver resultados* quando quiser.\n"
+    + ARNALDO_STYLE_RULES
 )
 
 
