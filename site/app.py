@@ -1,8 +1,11 @@
 """Site de divulgação do Arnaldo — página única servida pelo FastAPI, com Vue e
 Tailwind via CDN (sem build). Todo o texto editável fica em CONTENT.
 
-Rodar com:
-    poetry run uvicorn landing.app:app --port 8002
+Rodar com (da raiz do projeto):
+    poetry run uvicorn app:app --app-dir site --port 8002
+
+`site` é também um módulo da biblioteca padrão do Python, então `site.app:app` não
+importa — por isso o `--app-dir site`.
 """
 from pathlib import Path
 
