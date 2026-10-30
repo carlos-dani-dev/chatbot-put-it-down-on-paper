@@ -8,7 +8,7 @@ from agent import billing
 from agent.config import settings
 from agent.models import User
 from agent.repos import plan_repo
-from agent.signing import sign_result_link
+from agent.signing import SigningKeyMissing, sign_result_link
 
 from ..context.idle import IdleContext
 
@@ -50,7 +50,11 @@ def assinar_pro(db: Any, user: User, ctx: IdleContext) -> dict:
 
 
 def mostrar_resultados(db: Any, user: User, ctx: IdleContext) -> dict:
-    link = sign_result_link(user.id)
+    try:
+        link = sign_result_link(user.id)
+    except SigningKeyMissing:
+        logger.error("mostrar_resultados: DASHBOARD_SIGNING_KEY não configurada — link não gerado")
+        return {"ok": False, "error": "Não consegui gerar o link dos resultados agora, tenta de novo mais tarde. 🙏"}
     url = f"{settings.public_base_url}/webhook/dashboard?user_id={link['user_id']}&exp={link['exp']}&sig={link['sig']}"
     return {"ok": True, "url": url}
 

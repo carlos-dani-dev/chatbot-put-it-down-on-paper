@@ -12,9 +12,17 @@ from .config import settings
 DEFAULT_TTL_SECONDS = 15 * 60
 
 
+class SigningKeyMissing(RuntimeError):
+    pass
+
+
 def _digest(user_id: int, exp: int) -> str:
+    key = settings.dashboard_signing_key
+    # sem chave, o HMAC seria calculável por qualquer um e qualquer user_id viraria um link válido
+    if not key:
+        raise SigningKeyMissing("DASHBOARD_SIGNING_KEY não configurada")
     payload = f"{user_id}:{exp}".encode()
-    return hmac.new(settings.dashboard_signing_key.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.new(key.encode(), payload, hashlib.sha256).hexdigest()
 
 
 def sign_result_link(user_id: int, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> dict:
@@ -32,4 +40,8 @@ def verify_result_link(user_id: str | None, exp: str | None, sig: str | None) ->
         return False
     if exp_int < int(time.time()):
         return False
-    return hmac.compare_digest(_digest(user_id_int, exp_int), sig)
+    try:
+        expected = _digest(user_id_int, exp_int)
+    except SigningKeyMissing:
+        return False
+    return hmac.compare_digest(expected, sig)
