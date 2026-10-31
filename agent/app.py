@@ -138,7 +138,7 @@ def _process_and_reply(message):
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-@app.get("/healthy")
+@app.api_route("/healthy", methods=["GET", "HEAD"])
 def health_check():
     try:
         with engine.connect() as conn:

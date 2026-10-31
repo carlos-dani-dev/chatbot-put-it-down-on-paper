@@ -87,6 +87,6 @@ def asset(path: str) -> str:
 templates.env.globals["asset"] = asset
 
 
-@app.get("/")
+@app.api_route("/healthy", methods=["GET", "HEAD"])
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"content": CONTENT})
