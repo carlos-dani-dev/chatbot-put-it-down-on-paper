@@ -32,7 +32,6 @@ check() {
 
 echo "==> conferindo"
 check arnaldo-webhook http://127.0.0.1:8000/healthy
-check arnaldo-webhook http://127.0.0.1:8000/sentry-debug
 check arnaldo-site http://127.0.0.1:8002/
 
 echo "==> deploy ok: $(git log -1 --format='%h %s')"
