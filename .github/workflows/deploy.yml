@@ -29,14 +29,30 @@ jobs:
     steps:
       - name: Configurar SSH
         env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
         run: |
+          # secret inexistente chega como string vazia, sem erro nenhum: confere antes de tentar o SSH
+          missing=""
+          for name in EC2_HOST EC2_USER EC2_SSH_KEY EC2_HOST_KEY; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets ausentes ou vazios:$missing — cadastre em Settings > Secrets and variables > Actions > aba Secrets (Repository secrets)"
+            exit 1
+          fi
           install -m 700 -d ~/.ssh
           printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           # chave do servidor fixada: o SSH recusa a conexão se não for a sua EC2
           printf '%s\n' "$EC2_HOST_KEY" > ~/.ssh/known_hosts
+          # os secrets aparecem como *** no log: confere aqui se o EC2_HOST_KEY é mesmo do EC2_HOST
+          if ! ssh-keygen -F "$EC2_HOST" -f ~/.ssh/known_hosts >/dev/null; then
+            echo "::error::O EC2_HOST_KEY não tem chave para o endereço do EC2_HOST. Gere de novo com 'ssh-keyscan -t ed25519 <o mesmo endereço do EC2_HOST>' e regrave os dois secrets."
+            exit 1
+          fi
 
       - name: Atualizar e reiniciar
         env:
