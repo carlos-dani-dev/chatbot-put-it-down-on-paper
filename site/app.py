@@ -87,6 +87,7 @@ def asset(path: str) -> str:
 templates.env.globals["asset"] = asset
 
 
-@app.api_route("/healthy", methods=["GET", "HEAD"])
+# a página inicial do site fica em "/". HEAD além de GET: monitores como o UptimeRobot checam com HEAD
+@app.api_route("/", methods=["GET", "HEAD"])
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"content": CONTENT})
