@@ -10,7 +10,8 @@ class Settings:
 
     provider_name: str = os.getenv("PROVIDER", "meta").strip().lower()
 
-    dsn: str = os.getenv("SENTRY_DSN", "").strip().lower()
+    sentry_dsn: str = os.getenv("SENTRY_DSN", "").strip()
+    sentry_environment: str = os.getenv("SENTRY_ENVIRONMENT", "development").strip()
 
     meta_access_token: str = os.getenv("META_ACCESS_TOKEN", "")
     meta_phone_number_id: str = os.getenv("META_PHONE_NUMBER_ID", "")

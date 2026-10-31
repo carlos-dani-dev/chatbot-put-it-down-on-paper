@@ -34,17 +34,10 @@ from .router import handle_message
 from .signing import verify_result_link
 
 import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
 
-sentry_sdk.init(
-    dsn="https://59109f85ff14385178d543d9576a702c@o4512349392666624.ingest.us.sentry.io/4512351369166848",
-    integrations=[
-        LoggingIntegration(capture_sentry_logs=True),
-    ],
-    # To customize collected data (user info, request bodies, AI inputs/outputs),
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/
-    # data_collection={"user_info": False},
-)
+from .observability import init_sentry
+
+init_sentry()  # antes de criar o app; com filtro de dados pessoais (ver agent/observability.py)
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
@@ -88,6 +81,9 @@ def _process(from_number: str, text: str | None, button_id: str | None = None, m
 def _process_turn(from_number: str, text: str | None, button_id: str | None, message_id: str | None):
     with SessionLocal.begin() as db:
         user = get_or_create_user(db, from_number)
+        db.flush()  # garante o id de usuário recém-criado
+        # erros desta mensagem ficam ligados ao user_id no Sentry (nunca ao telefone)
+        sentry_sdk.set_user({"id": str(user.id)})
         last_seen = user.last_message_at
         if last_seen is not None and last_seen.tzinfo is None:
             last_seen = last_seen.replace(tzinfo=timezone.utc)
@@ -238,11 +234,6 @@ async def pix_webhook(request: Request, background: BackgroundTasks):
     if activated is not None:
         background.add_task(_notify_pro_activated, activated)
     return PlainTextResponse("", status_code=200)
-
-
-@app.get("/sentry-debug")
-async def trigger_error():
-    division_by_zero = 1 / 0
 
 
 @app.get("/webhook/dashboard")
