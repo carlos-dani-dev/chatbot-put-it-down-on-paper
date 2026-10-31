@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import settings
 
-engine = create_engine(settings.db_url)
+engine = create_engine(settings.db_url, pool_pre_ping=True, pool_recycle=300)
 
 if engine.dialect.name == "sqlite":
     @event.listens_for(engine, "connect")
