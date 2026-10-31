@@ -34,6 +34,7 @@ def abandon_session(db: Any, ws: WorkoutSession) -> None:
     last_logged = db.scalar(select(func.max(WorkoutSet.logged_at)).where(WorkoutSet.session_id == ws.id))
     ws.ended_at = last_logged or ws.started_at
     ws.ended_reason = "abandoned"
+    db.flush()  # com autoflush=False, sem isso uma consulta seguinte na mesma transação ainda veria a sessão aberta
 
 
 def count_sets(db: Any, session_id: int, exercise_id: int | None = None) -> int:
@@ -47,6 +48,7 @@ def close_session(db: Any, ws: WorkoutSession) -> int:
     """Fecha a sessão e devolve quantas séries foram registradas."""
     ws.ended_at = datetime.now(timezone.utc)
     ws.ended_reason = "finished"
+    db.flush()  # senão um start_session na mesma transação ainda a acha aberta e a marca como "abandoned"
     return count_sets(db, ws.id)
 
 

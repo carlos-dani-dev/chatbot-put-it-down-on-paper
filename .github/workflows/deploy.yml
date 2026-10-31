@@ -18,9 +18,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      # pega erro de sintaxe antes de chegar no servidor (os testes entram aqui depois)
+          python-version: "3.14" # mesma versão da EC2
+      # erro de sintaxe em qualquer parte (inclusive site/ e alembic/, que os testes não importam)
       - run: python -m compileall -q agent site alembic
+      - name: Instalar dependências
+        run: |
+          pip install poetry
+          poetry install --no-interaction
+      # se algum teste falhar, o job de deploy nem começa: nada quebrado chega na EC2
+      - name: Testes
+        run: poetry run pytest
 
   deploy:
     name: Deploy na EC2

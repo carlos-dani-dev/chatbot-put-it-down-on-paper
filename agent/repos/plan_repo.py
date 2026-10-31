@@ -36,6 +36,7 @@ def get_user_plan(db: Any, user: User, plan_id: int) -> Plan | None:
 
 def archive_plan(db: Any, plan: Plan) -> None:
     plan.archived_at = datetime.now(timezone.utc)
+    db.flush()  # com autoflush=False, sem isso o plano ainda apareceria como ativo na mesma transação
 
 
 def get_plan_exercises(db: Any, plan_id: int) -> list[tuple[PlanExercise, Exercise]]:
@@ -60,4 +61,5 @@ def save_plan(db: Any, user: User, draft: dict) -> Plan:
             target_sets=item["target_sets"],
         ))
 
+    db.flush()  # grava os exercícios já: uma consulta na mesma transação veria o plano vazio
     return plan

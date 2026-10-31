@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     Numeric,
@@ -185,3 +186,27 @@ class PixCharge(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped["User"] = relationship("User")
+
+
+# --------------------------------------------------------------------------
+# Consumo de LLM — uma linha por chamada à API. Guarda TOKENS, não o custo em
+# reais: o preço por token muda, e com os tokens dá pra (re)calcular o custo de
+# qualquer período na consulta, com o preço da época.
+# --------------------------------------------------------------------------
+class LlmCall(Base):
+    __tablename__ = "llm_calls"
+    __table_args__ = (
+        # as consultas de custo filtram por usuário e período ("quanto o usuário X gastou em outubro")
+        Index("ix_llm_calls_user_created", "user_id", "created_at"),
+        Index("ix_llm_calls_created", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # SET NULL: apagar um usuário não apaga o histórico de custo
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    label: Mapped[str] = mapped_column(String, nullable=False)  # session | idle | session.closing | decider ...
+    model: Mapped[str | None] = mapped_column(String)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)  # já inclui os tokens de raciocínio (cobrados como saída)
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 8))  # só quando a API informa (OpenRouter); o Gemini não

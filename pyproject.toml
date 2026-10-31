@@ -31,3 +31,13 @@ package-mode = false
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.2.0,<10.0.0)"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]       # onde procurar os testes
+pythonpath = ["."]          # raiz no sys.path: os testes importam `agent...` como o app faz
+addopts = "-ra"             # no fim, resume testes pulados/falhos e o motivo
