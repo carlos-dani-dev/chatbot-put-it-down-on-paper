@@ -10,6 +10,8 @@ class Settings:
 
     provider_name: str = os.getenv("PROVIDER", "meta").strip().lower()
 
+    dsn: str = os.getenv("SENTRY_DSN", "").strip().lower()
+
     meta_access_token: str = os.getenv("META_ACCESS_TOKEN", "")
     meta_phone_number_id: str = os.getenv("META_PHONE_NUMBER_ID", "")
     meta_verify_token: str = os.getenv("META_VERIFY_TOKEN", "meu_token_de_verificacao")

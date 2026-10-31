@@ -33,6 +33,19 @@ from .llm_usage import end_turn, start_turn
 from .router import handle_message
 from .signing import verify_result_link
 
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+sentry_sdk.init(
+    dsn="https://59109f85ff14385178d543d9576a702c@o4512349392666624.ingest.us.sentry.io/4512351369166848",
+    integrations=[
+        LoggingIntegration(capture_sentry_logs=True),
+    ],
+    # To customize collected data (user info, request bodies, AI inputs/outputs),
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/
+    # data_collection={"user_info": False},
+)
+
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
@@ -125,9 +138,19 @@ def _process_and_reply(message):
         logger.exception(f"[agent] Falha ao processar/enviar a resposta para {message.from_number}")
 
 
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
 @app.get("/healthy")
-async def health_check():
-    return {"status": "Healthy"}
+def health_check():
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("[health] banco indisponível")
+        return JSONResponse({"status": "Unhealthy", "database": "down"}, status_code=503)
+    return {"status": "Healthy", "database": "ok"}
+
 
 
 @app.get("/webhook/whatsapp")
@@ -215,6 +238,11 @@ async def pix_webhook(request: Request, background: BackgroundTasks):
     if activated is not None:
         background.add_task(_notify_pro_activated, activated)
     return PlainTextResponse("", status_code=200)
+
+
+@app.get("/sentry-debug")
+async def trigger_error():
+    division_by_zero = 1 / 0
 
 
 @app.get("/webhook/dashboard")
