@@ -36,12 +36,6 @@ from .signing import verify_result_link
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    yield
-
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("agent-app")
 provider = get_provider()
@@ -50,7 +44,6 @@ app = FastAPI(
     title="Chatbot (agent, tool-calling)",
     description="Chatbot de treino no WhatsApp — cada estado tratado por um agente de tool-calling",
     version="0.1.0",
-    lifespan=lifespan,
 )
 
 app.mount("/static", StaticFiles(directory=str(Path(__file__).resolve().parent / "static")), name="static")

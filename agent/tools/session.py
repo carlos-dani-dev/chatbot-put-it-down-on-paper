@@ -95,7 +95,29 @@ def log_sets(
         "set_range": [first, last],
         "total_done": done,
         "target_sets": target,
+        **_goal_status(db, ws, ctx, exercise.id, done, target),
     }
+
+
+def _goal_status(db: Any, ws: WorkoutSession, ctx: SessionContext, exercise_id: int, done: int,
+                 target: int | None) -> dict:
+    """Situação da meta calculada em código — a LLM só repete o que vem aqui, nunca compara
+    números por conta própria. As contagens vêm do banco, e não do `ctx`, porque várias
+    chamadas na mesma rodada compartilham um `ctx` montado antes de qualquer registro.
+    """
+    pending = [
+        e.name for e in ctx.exercises
+        if e.target_sets is not None and session_repo.count_sets(db, ws.id, e.id) < e.target_sets
+    ]
+    status: dict = {}
+    if target is not None:
+        status["remaining_sets"] = max(0, target - done)
+        status["target_reached"] = done >= target
+    if any(e.target_sets is not None for e in ctx.exercises):
+        current = next((e.name for e in ctx.exercises if e.id == exercise_id), None)
+        status["next_pending_exercise"] = next((name for name in pending if name != current), None)
+        status["all_targets_reached"] = not pending
+    return status
 
 
 def format_log_sets_fact(result: dict) -> str:
@@ -105,8 +127,23 @@ def format_log_sets_fact(result: dict) -> str:
     sets_desc = ", ".join(f"{s['weight_kg']:g}kg x {s['reps']}" for s in result["sets_logged"])
     first, last = result["set_range"]
     faixa = f"série {first}" if first == last else f"séries {first} a {last}"
-    progresso = f" — progresso {result['total_done']}/{result['target_sets']}" if result.get("target_sets") else ""
-    return f"✅ *{result['exercise_name']}*: {faixa} ({sets_desc}){progresso}"
+    progresso = ""
+    done, target = result["total_done"], result.get("target_sets")
+    # a meta foi alcançada nesta mensagem (e não numa anterior)
+    just_reached = bool(target) and done - len(result["sets_logged"]) < target <= done
+    if target:
+        if done > target and not just_reached:
+            situacao = "acima da meta 💪"
+        elif result.get("target_reached"):
+            situacao = "meta batida 🎯"
+        else:
+            faltam = result["remaining_sets"]
+            situacao = f"falta {faltam} série" if faltam == 1 else f"faltam {faltam} séries"
+        progresso = f" — progresso {done}/{target}, {situacao}"
+    line = f"✅ *{result['exercise_name']}*: {faixa} ({sets_desc}){progresso}"
+    if result.get("all_targets_reached") and just_reached:
+        line += "\n🏁 Todos os exercícios do plano bateram a meta!"
+    return line
 
 
 def request_delete_sets(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext, set_ids: list[str]) -> dict:
@@ -185,7 +222,14 @@ def list_exercises(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext)
     return {
         "ok": True,
         "exercises": [
-            {"name": e.name, "done_sets": e.done_sets, "target_sets": e.target_sets}
+            {
+                "name": e.name,
+                "done_sets": e.done_sets,
+                "target_sets": e.target_sets,
+                # situação já decidida aqui, pra LLM não comparar os números sozinha
+                **({"remaining_sets": max(0, e.target_sets - e.done_sets), "target_reached": e.done_sets >= e.target_sets}
+                   if e.target_sets is not None else {}),
+            }
             for e in ctx.exercises
         ],
     }

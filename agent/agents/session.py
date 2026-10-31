@@ -41,10 +41,11 @@ def _system_prompt(ctx, facts_confirmed: bool = False) -> str:
     )
 
     facts_note = (
-        "- Uma confirmação com o nome do exercício, as séries e o progresso já foi (ou vai ser) "
-        "exibida automaticamente pelo sistema antes da sua resposta — NÃO repita o nome do "
-        "exercício nem nenhum número nessa resposta, só reaja numa frase curta ou pergunte o que "
-        "vem a seguir."
+        "- Uma confirmação com o nome do exercício, as séries, o progresso e a situação da meta "
+        "(\"falta N séries\" ou \"meta batida\") já foi (ou vai ser) exibida automaticamente pelo "
+        "sistema antes da sua resposta — NÃO repita o nome do exercício registrado nem nenhum "
+        "número nessa resposta, só reaja numa frase curta coerente com target_reached ou pergunte "
+        "o que vem a seguir (pode citar o exercício de next_pending_exercise)."
         if facts_confirmed else ""
     )
 
@@ -88,8 +89,14 @@ def _system_prompt(ctx, facts_confirmed: bool = False) -> str:
         "fale sempre só pelo nome do exercício.\n"
         "- Se a mensagem não corresponder a nenhuma ferramenta (ex.: uma dúvida genérica), responda "
         "direto em texto, sem chamar ferramenta nenhuma.\n"
-        "- Num treino com plano, quando um exercício bater a meta de séries, incentive a passar pro "
-        "próximo da lista; quando todos baterem, lembre que ele pode *Finalizar treino*.\n"
+        "- Meta de séries: NUNCA compare números por conta própria pra decidir se a meta foi batida. "
+        "Os resultados das ferramentas já trazem a situação calculada — use só esses campos:\n"
+        "  • target_reached=false → a meta NÃO foi batida: incentive a continuar no mesmo exercício. "
+        "Nunca diga que bateu a meta nem sugira trocar de exercício.\n"
+        "  • target_reached=true → aí sim comemore a meta e sugira o exercício de "
+        "next_pending_exercise (se vier vazio, não invente outro).\n"
+        "  • all_targets_reached=true → lembre que ele pode *Finalizar treino*.\n"
+        "  • Sem target_reached no resultado (exercício fora do plano ou treino livre) → não fale em meta.\n"
         + ARNALDO_STYLE_RULES
         + f"{facts_note}"
     )
