@@ -23,7 +23,7 @@ from .resume_check import handle_resume_check
 from .commands import handle_universal_command
 from agent.models import Base, User
 from agent.repos import chat_message_repo
-from agent.repos.user_repo import get_or_create_user
+from agent.repos.user_repo import get_or_create_locked_user
 from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply, MultiTextReply
 
 from . import billing
@@ -80,8 +80,9 @@ def _process(from_number: str, text: str | None, button_id: str | None = None, m
 
 def _process_turn(from_number: str, text: str | None, button_id: str | None, message_id: str | None):
     with SessionLocal.begin() as db:
-        user = get_or_create_user(db, from_number)
-        db.flush()  # garante o id de usuário recém-criado
+        # trava o usuário até o fim desta mensagem: mensagens da mesma pessoa são processadas
+        # uma de cada vez (ver get_or_create_locked_user); de pessoas diferentes, em paralelo
+        user = get_or_create_locked_user(db, from_number)
         # erros desta mensagem ficam ligados ao user_id no Sentry (nunca ao telefone)
         sentry_sdk.set_user({"id": str(user.id)})
         last_seen = user.last_message_at
