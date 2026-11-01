@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 BASE_DIR = Path(__file__).resolve().parent
 
 CONTENT = {
-    "whatsapp_url": "https://wa.me/+558688713548",
+    "whatsapp_url": "https://wa.me/+558688286852",
     "stats": [
         {"strong": "Grátis", "text": "para começar"},
         {"strong": "Sem", "text": "instalar nada"},
