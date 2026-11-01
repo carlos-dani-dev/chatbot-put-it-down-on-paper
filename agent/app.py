@@ -7,8 +7,6 @@ Rodar com:
 import logging
 from datetime import datetime, timezone
 
-from contextlib import asynccontextmanager
-
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, Request
