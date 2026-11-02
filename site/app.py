@@ -8,6 +8,7 @@ Rodar com (da raiz do projeto):
 importa — por isso o `--app-dir site`.
 """
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -15,8 +16,13 @@ from fastapi.templating import Jinja2Templates
 
 BASE_DIR = Path(__file__).resolve().parent
 
+WHATSAPP_NUMBER = "558688286852"
+# o ?text= deixa a mensagem já escrita no WhatsApp, é só a pessoa enviar. /pro é o comando
+# que o bot reconhece em qualquer momento da conversa (ver agent/commands.py)
+PRO_MESSAGE = "/pro"
+
 CONTENT = {
-    "whatsapp_url": "https://wa.me/+558688286852",
+    "whatsapp_url": f"https://wa.me/{WHATSAPP_NUMBER}",
     "stats": [
         {"strong": "Grátis", "text": "para começar"},
         {"strong": "Sem", "text": "instalar nada"},
@@ -53,6 +59,7 @@ CONTENT = {
                 "Página de resultados e recordes",
             ],
             "highlight": False,
+            "cta_url": f"https://wa.me/{WHATSAPP_NUMBER}",
         },
         {
             "name": "Pro",
@@ -60,6 +67,7 @@ CONTENT = {
             "period": "/mês",
             "items": ["Tudo do plano Grátis", "Planos de treino ilimitados", "Exercícios ilimitados por plano"],
             "highlight": True,
+            "cta_url": f"https://wa.me/{WHATSAPP_NUMBER}?text={quote(PRO_MESSAGE)}",
         },
     ],
     "socials": [

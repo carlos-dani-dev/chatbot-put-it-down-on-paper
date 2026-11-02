@@ -22,6 +22,7 @@ _WELCOME_MESSAGE = (
     "*Registre treinos*, séries e cargas em linguagem natural\n"
     "*Crie planos de treino* ou treine livre\n"
     "*Acompanhe sua evolução* com recordes e gráficos\n\n"
+    "Quer planos e exercícios ilimitados? Pra ser *Pro*, é só me mandar */pro* a qualquer momento.\n\n"
     "Vamos começar?"
 )
 

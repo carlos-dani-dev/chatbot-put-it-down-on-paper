@@ -1,32 +1,26 @@
+from typing import Any
+
+from . import billing
 from .models import User
-from .schemas.replies import TextReply, ButtonsReply, ListReply
+from .schemas.replies import MultiTextReply, TextReply
 
-DASHBOARD_URL = "https://dashboard.exemplo.com/treinos"
-
-_RESULTS_WRONG_STATE_MESSAGES = {
-    "onboarding":    "🤔 Conclua o tutorial antes de ver os resultados.",
-    "planning":      "🤔 Termine de planejar o treino antes de ver os resultados.",
-    "session_setup": "🤔 Termine de escolher o treino antes de ver os resultados.",
-    "session":       "🤔 Termine a sessão de treino antes de ver os resultados.",
-}
+# comando que o botão do Pro no site deixa pronto (site/app.py) e que as boas-vindas ensinam
+PRO_COMMAND = "/pro"
 
 
-def _handle_resultados(user: User) -> tuple[TextReply | ButtonsReply | ListReply, str]:
-    if user.state == "idle":
-        return TextReply(f"📊 Confira seus resultados aqui: {DASHBOARD_URL}"), "idle"
-
-    return TextReply(_RESULTS_WRONG_STATE_MESSAGES[user.state]), user.state
+def _handle_pro(db: Any, user: User) -> tuple[TextReply | MultiTextReply, str]:
+    """Gera o Pix em qualquer estado — inclusive na primeira mensagem de alguém que veio do site —
+    e não muda o estado: quem estava no meio de um treino continua nele."""
+    return billing.pro_charge_reply(billing.pro_charge_result(db, user)), user.state
 
 
 def handle_universal_command(
-    user: User, text: str | None
-) -> tuple[TextReply | ButtonsReply | ListReply, str] | None:
+    db: Any, user: User, text: str | None
+) -> tuple[TextReply | MultiTextReply, str] | None:
     if text is None:
         return None
 
-    command = text.strip().lower()
-
-    if command == "/resultados":
-        return _handle_resultados(user)
+    if text.strip().lower() == PRO_COMMAND:
+        return _handle_pro(db, user)
 
     return None

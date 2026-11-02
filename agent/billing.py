@@ -11,10 +11,10 @@ from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .config import get_payment_client, settings
-from .models import PixCharge, User
+from .models import ChatMessage, PixCharge, User
 from .repos import plan_repo
 from .schemas.replies import MultiTextReply, TextReply
 
@@ -192,6 +192,9 @@ def apply_payment_update(db: Any, payment_id: str) -> ProActivated | None:
 # --------------------------------------------------------------------------
 FREE_MAX_PLANS = 1
 FREE_MAX_EXERCISES_PER_PLAN = 5
+# mensagens por dia (zera à meia-noite de Brasília). Precisa caber um dia de treino com folga:
+# confira o maior dia real no painel/Supabase antes de baixar
+FREE_DAILY_MESSAGES = 60
 
 
 @dataclass
@@ -271,3 +274,35 @@ def pro_charge_reply(result: dict) -> TextReply | MultiTextReply:
         f"Ele vale até {result['expires']}. Assim que o pagamento for confirmado, seu Pro é ativado.",
         result["qr_code"],
     ])
+
+
+# --------------------------------------------------------------------------
+# Limite diário de mensagens do plano grátis — checado antes de qualquer agente,
+# então mensagem barrada não gasta token nenhum.
+# --------------------------------------------------------------------------
+def user_messages_today(db: Any, user: User) -> int:
+    """Mensagens do usuário desde a meia-noite de Brasília (já contando a que acabou de chegar)."""
+    midnight = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    return db.scalar(
+        select(func.count()).select_from(ChatMessage).where(
+            ChatMessage.user_id == user.id,
+            ChatMessage.role == "user",
+            ChatMessage.created_at >= midnight.astimezone(timezone.utc),
+        )
+    )
+
+
+def daily_limit_intercept(db: Any, user: User) -> tuple[TextReply | None, str] | None:
+    """None: segue normal. (aviso, estado): acabou de passar do limite, avisa uma vez.
+    (None, estado): já foi avisado hoje — não responde nada, pra quem insiste não render resposta."""
+    count = user_messages_today(db, user)
+    if count <= FREE_DAILY_MESSAGES or active_pro_until(db, user) is not None:
+        return None
+    if count == FREE_DAILY_MESSAGES + 1:
+        logger.info("billing: limite diário atingido user=%s", user.phone_number)
+        return TextReply(
+            f"🙏 Você usou as {FREE_DAILY_MESSAGES} mensagens de hoje do plano *Grátis*. "
+            "À meia-noite libera de novo.\n\n"
+            "Pra usar sem limite, é só mandar */pro*."
+        ), user.state
+    return None, user.state

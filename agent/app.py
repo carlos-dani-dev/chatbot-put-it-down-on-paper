@@ -94,15 +94,21 @@ def _process_turn(from_number: str, text: str | None, button_id: str | None, mes
 
         intercept_result = None
         if button_id is None:
-            intercept_result = handle_universal_command(user, text)
-            if intercept_result is None:
-                intercept_result = handle_resume_check(db, user, text, gap)
+            # comandos vêm antes do limite: o /pro precisa funcionar justamente pra quem estourou
+            intercept_result = handle_universal_command(db, user, text)
+        if intercept_result is None:
+            # vale também pra botões, que senão iriam direto pro agente (e pra LLM)
+            intercept_result = billing.daily_limit_intercept(db, user)
+        if intercept_result is None and button_id is None:
+            intercept_result = handle_resume_check(db, user, text, gap)
 
         if intercept_result is not None:
             reply, next_state = intercept_result
         else:
             reply, next_state = handle_message(db, user, text, button_id)
 
+        if reply is None:  # passou do limite e já foi avisado hoje: não responde
+            return None
         chat_message_repo.log_message(db, user, "assistant", reply.text)
         user.state = next_state
         return reply
@@ -117,6 +123,9 @@ def _process_and_reply(message):
 
     try:
         reply = _process(message.from_number, message.text, message.button_id, message.message_id)
+        if reply is None:
+            logger.info(f"[agent] Sem resposta para {message.from_number} (limite diário, já avisado)")
+            return
         if isinstance(reply, ButtonsReply):
             provider.send_interactive_buttons(message.from_number, reply.text, reply.buttons)
         elif isinstance(reply, ListReply):
