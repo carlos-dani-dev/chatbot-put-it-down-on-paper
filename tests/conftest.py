@@ -42,7 +42,8 @@ def db():
     """Um banco SQLite novo, em memória, com todas as tabelas — some no fim do teste."""
     # StaticPool: todas as conexões compartilham o MESMO banco em memória (sem ele, cada
     # conexão nova abriria um banco vazio diferente)
-    engine = create_engine("sqlite://", poolclass=StaticPool)
+    # check_same_thread=False: o TestClient roda as rotas do FastAPI em outra thread (ver test_admin.py)
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
 
     @event.listens_for(engine, "connect")
     def _foreign_keys(dbapi_connection, _record):

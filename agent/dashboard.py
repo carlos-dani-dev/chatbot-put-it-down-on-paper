@@ -72,8 +72,27 @@ def _plan_name(ws: WorkoutSession) -> str:
     return ws.plan.name if ws.plan else FREE_TRAINING_LABEL
 
 
+def _ficha(db: Any, user: User) -> list[dict]:
+    """Planos ativos do usuário com os exercícios na ordem do plano — a aba "Ficha"."""
+    plans = db.scalars(
+        select(Plan).where(Plan.user_id == user.id, Plan.archived_at.is_(None)).order_by(Plan.created_at, Plan.id)
+    ).all()
+    return [
+        {
+            "name": plan.name,
+            "total_sets": sum(pe.target_sets for pe in plan.exercises),
+            "exercises": [
+                {"name": pe.exercise.name, "muscle_group": pe.exercise.muscle_group, "target_sets": pe.target_sets}
+                for pe in plan.exercises
+            ],
+        }
+        for plan in plans
+    ]
+
+
 def build_dashboard_context(db: Any, user: User) -> dict:
     member_since = _local(user.created_at).strftime("%m/%Y") if user.created_at else None
+    ficha = _ficha(db, user)  # independe de ter treino: quem só montou o plano já vê a ficha
 
     # todo treino com pelo menos uma série conta, finalizado ou não — sessão largada sem
     # "finalizar" ainda é treino feito
@@ -89,7 +108,7 @@ def build_dashboard_context(db: Any, user: User) -> dict:
     ).all()  # ordem cronológica: do mais antigo pro mais recente
 
     if not sessions:
-        return {"user": user, "member_since": member_since, "has_data": False}
+        return {"user": user, "member_since": member_since, "has_data": False, "ficha": ficha}
 
     sets_by_session: dict[int, list[WorkoutSet]] = {
         ws.id: db.scalars(
@@ -259,6 +278,7 @@ def build_dashboard_context(db: Any, user: User) -> dict:
         "user": user,
         "member_since": member_since,
         "has_data": True,
+        "ficha": ficha,
         "calendar": calendar,
         "last_session": last_session,
         "plans": plans,
