@@ -19,7 +19,9 @@ def log_message(db: Session, user: User, role: str, content: str, wa_message_id:
         if existing is not None:
             return existing
 
-    message = ChatMessage(user_id=user.id, role=role, content=content, wa_message_id=wa_message_id)
+    # user.state só muda no fim da mensagem (app.py), então a pergunta e a resposta ficam com o
+    # estado em que o usuário estava quando escreveu
+    message = ChatMessage(user_id=user.id, role=role, content=content, state=user.state, wa_message_id=wa_message_id)
     db.add(message)
     db.flush()
     return message

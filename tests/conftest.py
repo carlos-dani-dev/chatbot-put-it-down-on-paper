@@ -19,11 +19,12 @@ os.environ.setdefault("DASHBOARD_SIGNING_KEY", "chave-de-teste")
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from google.genai import types
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from agent.clients.mercadopago import MercadoPagoError, PixPayment
@@ -281,3 +282,22 @@ def _no_real_payments(monkeypatch):
         raise RealServiceBlocked("o teste tentou usar o Mercado Pago de verdade — use a fixture `mercadopago`")
 
     monkeypatch.setattr("agent.billing.get_payment_client", _blocked)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_db(monkeypatch):
+    """O llm_usage grava o consumo com o SessionLocal do app, que na sua máquina aponta pro banco do
+    .env — o Supabase de PRODUÇÃO. Nenhum teste pode gravar lá: quem precisar usa a fixture
+    `llm_calls_db`, que troca o SessionLocal por um ligado ao banco em memória do teste."""
+    def _blocked(*_args, **_kwargs):
+        raise RealServiceBlocked("o teste tentou gravar no banco do .env — use a fixture `llm_calls_db`")
+
+    # o llm_usage só usa SessionLocal.begin()
+    monkeypatch.setattr("agent.llm_usage.SessionLocal", SimpleNamespace(begin=_blocked))
+
+
+@pytest.fixture
+def llm_calls_db(db, monkeypatch):
+    """Faz o llm_usage gravar no banco em memória do teste (o mesmo da fixture `db`)."""
+    monkeypatch.setattr("agent.llm_usage.SessionLocal", sessionmaker(bind=db.get_bind(), autoflush=False))
+    return db

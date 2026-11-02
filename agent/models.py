@@ -54,6 +54,9 @@ class ChatMessage(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False)  # 'user' | 'assistant'
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # estado do usuário quando a mensagem foi trocada (onboarding, idle, session...): mostra onde
+    # cada pessoa passa o tempo. NULL nas mensagens de antes desta coluna existir
+    state: Mapped[str | None] = mapped_column(String)
     wa_message_id: Mapped[str | None] = mapped_column(String, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

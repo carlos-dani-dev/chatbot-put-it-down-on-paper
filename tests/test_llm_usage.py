@@ -2,27 +2,32 @@
 
 Como funciona: `start_turn` abre um acumulador quando chega uma mensagem do usuário; cada chamada
 à LLM (`record_gemini` / `record_openrouter`) loga os próprios tokens e soma no acumulador;
-`end_turn` loga o total da mensagem e fecha. Hoje o resultado vai pro LOG — por isso estes testes
-leem o log com o `caplog`, uma fixture do próprio pytest que captura o que foi logado durante o teste.
+`end_turn` loga o total da mensagem e grava uma linha por chamada na tabela llm_calls.
 
-Quando a gravação na tabela llm_calls entrar, os mesmos cenários passam a conferir também o banco.
+O log é lido com o `caplog`, uma fixture do próprio pytest que captura o que foi logado durante o
+teste. A tabela, com a fixture `llm_calls_db` (conftest.py), que faz a gravação cair no banco em
+memória do teste — nunca no banco do .env.
 """
 import contextvars
 import logging
 import re
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from google.genai import types
+from sqlalchemy import select
 
 from agent import llm_usage
 from agent.agents import session as session_agent
 from agent.context.session import build_context
+from agent.models import LlmCall
 
 PHONE = "5586999990000"
 
 
 @pytest.fixture(autouse=True)
-def _capturar_log(caplog):
+def _capturar_log(caplog, llm_calls_db):
     caplog.set_level(logging.INFO, logger="agent.llm_usage")
     yield
     llm_usage._turn.set(None)  # nenhum teste deixa um acumulador aberto pro próximo
@@ -53,6 +58,12 @@ def linhas(caplog, tipo: str) -> list[dict]:
 def total_da_mensagem(caplog) -> dict:
     [turn] = linhas(caplog, "TURN")
     return {k: int(v) for k, v in turn.items() if k != "user"}
+
+
+def gravadas(db) -> list[tuple]:
+    """As linhas da tabela llm_calls, na ordem em que foram gravadas."""
+    calls = db.scalars(select(LlmCall).order_by(LlmCall.id)).all()
+    return [(c.user_id, c.label, c.model, c.prompt_tokens, c.output_tokens, c.cost_usd) for c in calls]
 
 
 # ---------------------------------------------------------------- Gemini: o cálculo de cada chamada
@@ -215,3 +226,68 @@ def test_mensagem_real_da_sessao_soma_as_duas_chamadas_do_agente(caplog, db, use
 
     assert [c["call"] for c in linhas(caplog, "call")] == ["session", "session"]
     assert total_da_mensagem(caplog) == {"calls": 2, "prompt": 3200, "output": 48, "total": 3248}
+    # model None: as respostas do Gemini falso só ganharam a contagem de tokens, não o model_version
+    assert gravadas(db) == [(user.id, "session", None, 1500, 40, None), (user.id, "session", None, 1700, 8, None)]
+
+
+# ---------------------------------------------------------------- a gravação na tabela llm_calls
+
+def test_cada_chamada_vira_uma_linha_ligada_ao_usuario(db, user):
+    llm_usage.start_turn(user.phone_number)
+    llm_usage.record_gemini("idle", gemini_response(prompt=900, output=12, thoughts=3, total=915))
+    llm_usage.record_openrouter("decider", "mercury", {"prompt_tokens": 300, "completion_tokens": 40,
+                                                       "cost": 0.0000412})
+    llm_usage.end_turn()
+
+    assert gravadas(db) == [
+        (user.id, "idle", "gemini-flash-lite-latest", 900, 15, None),  # raciocínio somado na saída
+        (user.id, "decider", "mercury", 300, 40, Decimal("0.0000412")),  # só o OpenRouter informa custo
+    ]
+
+
+def test_nada_e_gravado_antes_do_fim_da_mensagem(db, user):
+    llm_usage.start_turn(user.phone_number)
+    llm_usage.record_gemini("idle", gemini_response(prompt=900, output=12, total=912))
+
+    assert gravadas(db) == []  # grava tudo de uma vez no end_turn, numa transação só
+
+
+def test_mensagem_sem_chamadas_nao_grava_nada(db, user):
+    llm_usage.start_turn(user.phone_number)
+    llm_usage.record_gemini("idle", types.GenerateContentResponse(candidates=[]))  # sem contagem
+    llm_usage.end_turn()
+
+    assert gravadas(db) == []
+
+
+def test_telefone_sem_usuario_grava_com_user_id_vazio(db):
+    """Se a mensagem que criaria o usuário deu erro e foi desfeita, ele não existe no banco — mas os
+    tokens foram gastos do mesmo jeito. A linha fica sem dono em vez de se perder."""
+    llm_usage.start_turn("5586000000000")
+    llm_usage.record_gemini("onboarding", gemini_response(prompt=500, output=20, total=520))
+    llm_usage.end_turn()
+
+    assert gravadas(db) == [(None, "onboarding", "gemini-flash-lite-latest", 500, 20, None)]
+
+
+def test_chamada_fora_de_uma_mensagem_nao_e_gravada(db):
+    llm_usage.record_gemini("script", gemini_response(prompt=10, output=1, total=11))
+    llm_usage.end_turn()
+
+    assert gravadas(db) == []
+
+
+def test_falha_ao_gravar_nao_quebra_a_mensagem(caplog, monkeypatch, user):
+    """O consumo é secundário: se o banco falhar aqui, a resposta ao usuário segue normalmente."""
+    def banco_fora_do_ar():
+        raise ConnectionError("banco fora do ar")
+
+    monkeypatch.setattr("agent.llm_usage.SessionLocal", SimpleNamespace(begin=banco_fora_do_ar))
+    llm_usage.start_turn(user.phone_number)
+    llm_usage.record_gemini("idle", gemini_response(prompt=900, output=12, total=912))
+
+    llm_usage.end_turn()  # não levanta
+
+    assert "falha ao gravar o consumo" in caplog.text
+    assert total_da_mensagem(caplog)["total"] == 912  # o log continua lá
+    assert llm_usage._turn.get() is None  # e o acumulador fechou
