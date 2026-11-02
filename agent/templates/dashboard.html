@@ -90,6 +90,17 @@
   .hero h1 { margin: 14px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; }
   .hero p { margin: 8px 0 0; font-size: 14px; color: var(--text-secondary); }
 
+  /* ---------- compartilhar (PDF) ---------- */
+  .share-btn { margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--surface-3); background: transparent; color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .share-btn:hover { background: var(--surface-2); }
+  .share-btn svg { color: var(--wa); flex: none; }
+  .share-btn[disabled] { opacity: .6; cursor: progress; }
+  .share-btn.ready { border-color: var(--wa); background: var(--wa-soft); }
+  /* só no clone que vira PDF (ver buildPdf): margem e rodapé com o site */
+  .exporting { padding: 4px 20px 24px; background: var(--surface-1); }
+  .export-foot { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--surface-3); text-align: center; font-size: 12px; color: var(--text-secondary); }
+  .export-foot strong { color: var(--wa); }
+
   /* ---------- base ---------- */
   h2.section-title {
     font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
@@ -250,6 +261,12 @@
 
 {% macro chevron_icon() %}<svg class="chevron" width="8" height="14" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endmacro %}
 
+{# data-html2canvas-ignore: o próprio botão não aparece no PDF #}
+{% macro share_button(view) %}<button type="button" class="share-btn" data-share="{{ view }}" data-html2canvas-ignore>
+  <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 11.5V2M9 2 5.5 5.5M9 2l3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8H4a1.5 1.5 0 0 0-1.5 1.5v5A1.5 1.5 0 0 0 4 16h10a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 14 8h-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  <span>Compartilhar</span>
+</button>{% endmacro %}
+
 {% macro exercise_body(ex, chart_id) %}
   <div class="ex-meta">
     <span class="tag">{{ "Recorde pessoal" if ex.is_pr else "Último registro" }}</span>
@@ -335,6 +352,7 @@
     <span class="pill"><span class="dot"></span>Seus resultados</span>
     <h1>Bora ver sua evolução</h1>
     {% if member_since %}<p>Treinando com o Arnaldo desde {{ member_since }}</p>{% endif %}
+    {% if has_data %}{{ share_button("home") }}{% endif %}
   </div>
 
   {% if not has_data %}
@@ -481,6 +499,7 @@
     <span class="pill"><span class="dot"></span>Ficha</span>
     <h1>Seus planos de treino</h1>
     <p>{{ ficha | length }} {{ "plano cadastrado" if ficha | length == 1 else "planos cadastrados" }}</p>
+    {% if ficha %}{{ share_button("ficha") }}{% endif %}
   </div>
 
   {% if ficha %}<h2 class="section-title">Planos e exercícios</h2>{% endif %}
@@ -541,6 +560,125 @@
   document.querySelectorAll('.drawer a').forEach((a) => {
     a.addEventListener('click', () => { document.getElementById('menu-toggle').checked = false; });
   });
+
+  // ================= compartilhar: a aba vira um PDF e abre o "compartilhar" do celular =================
+  // as bibliotecas só são baixadas no primeiro toque em Compartilhar (a página abre sem esse peso)
+  const PDF_LIBS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  ];
+  const SHARE = {
+    home: { file: 'arnaldo-resultados.pdf', text: 'Olha minha evolução no treino 💪' },
+    ficha: { file: 'arnaldo-ficha.pdf', text: 'Minha ficha de treino 💪' },
+  };
+  const SITE_URL = 'https://arnaldogymai.com';
+  const MAX_PDF_HEIGHT = 14000;  // o jsPDF não aceita página mais alta que ~14400
+  const pdfReady = {};  // PDF já gerado esperando o 2º toque (ver share)
+  let libsLoading = null;
+
+  function loadPdfLibs() {
+    libsLoading ||= Promise.all(PDF_LIBS.map((src) => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`não carregou ${src}`));
+      document.head.appendChild(script);
+    }))).catch((err) => { libsLoading = null; throw err; });
+    return libsLoading;
+  }
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function buildPdf(view) {
+    await loadPdfLibs();
+    const node = views[view];
+    const scrollY = window.scrollY;
+    // abre tudo que está recolhido: no PDF entram todos os planos, exercícios e gráficos
+    const closed = [...node.querySelectorAll('details:not([open])')];
+    closed.forEach((d) => { d.open = true; });
+    window.scrollTo(0, 0);
+    let canvas;
+    try {
+      if (window.initVisible) window.initVisible();
+      await wait(closed.length ? 700 : 50);  // os gráficos recém-abertos animam por 500ms
+      canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: '#0B1118',
+        onclone: (doc) => {
+          const clone = doc.getElementById(node.id);
+          clone.classList.add('exporting');
+          const foot = doc.createElement('div');
+          foot.className = 'export-foot';
+          foot.innerHTML = 'Feito com o <strong>Arnaldo</strong> · seu parceiro de treino no WhatsApp<br>arnaldogymai.com';
+          clone.appendChild(foot);
+        },
+      });
+    } finally {
+      closed.forEach((d) => { d.open = false; });
+      window.scrollTo(0, scrollY);
+    }
+    // uma página só, do tamanho do conteúdo: no celular o PDF rola igual à página
+    const fit = Math.min(1, MAX_PDF_HEIGHT / (canvas.height / 2));
+    const w = (canvas.width / 2) * fit, h = (canvas.height / 2) * fit;
+    const pdf = new window.jspdf.jsPDF({
+      unit: 'px', format: [w, h], orientation: h > w ? 'portrait' : 'landscape', hotfixes: ['px_scaling'], compress: true,
+    });
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
+    return new File([pdf.output('blob')], SHARE[view].file, { type: 'application/pdf' });
+  }
+
+  function setLabel(btn, text) { btn.querySelector('span').textContent = text; }
+
+  function download(file) {
+    const url = URL.createObjectURL(file);
+    const a = Object.assign(document.createElement('a'), { href: url, download: file.name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function share(btn) {
+    const view = btn.dataset.share;
+    let file = pdfReady[view];
+    if (!file) {
+      btn.disabled = true;
+      setLabel(btn, 'Gerando PDF…');
+      try {
+        file = await buildPdf(view);
+      } catch (err) {
+        setLabel(btn, 'Não deu, toque de novo');
+        return;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // computador e navegadores sem compartilhar arquivo: baixa o PDF
+    if (!(navigator.canShare && navigator.canShare({ files: [file] }))) {
+      download(file);
+      setLabel(btn, 'Compartilhar');
+      return;
+    }
+    try {
+      await navigator.share({ files: [file], title: 'Arnaldo', text: `${SHARE[view].text} ${SITE_URL}` });
+      delete pdfReady[view];
+      btn.classList.remove('ready');
+      setLabel(btn, 'Compartilhar');
+    } catch (err) {
+      // o iPhone só abre o compartilhar logo depois de um toque, e gerar o PDF demora: o PDF
+      // fica pronto e o próximo toque abre o compartilhar na hora
+      if (err.name === 'NotAllowedError') {
+        pdfReady[view] = file;
+        btn.classList.add('ready');
+        setLabel(btn, 'PDF pronto · toque pra enviar');
+      } else {
+        setLabel(btn, 'Compartilhar');  // AbortError: a pessoa fechou o compartilhar
+      }
+    }
+  }
+
+  document.querySelectorAll('[data-share]').forEach((btn) => btn.addEventListener('click', () => share(btn)));
 </script>
 
 {% if has_data %}

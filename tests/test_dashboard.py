@@ -114,3 +114,27 @@ def test_nomes_vindos_do_usuario_sao_escapados(db, user, make_plan):
 
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+# ---------------------------------------------------------------- compartilhar (PDF)
+
+def botoes_de_compartilhar(html: str) -> list[str]:
+    return [b.split('"')[0] for b in html.split('data-share="')[1:]]
+
+
+def test_as_duas_abas_tem_compartilhar(db, user, make_plan, start_workout, log):
+    plano = make_plan("Peito", [("Supino reto", 4)])
+    log(start_workout(plano), "Supino reto", (80, 10))
+
+    assert botoes_de_compartilhar(render(build_dashboard_context(db, user))) == ["home", "ficha"]
+
+
+def test_sem_nada_pra_mostrar_nao_tem_compartilhar(db, user):
+    """Sem treino nem plano, as duas abas estão vazias: não há o que mandar pro amigo."""
+    assert botoes_de_compartilhar(render(build_dashboard_context(db, user))) == []
+
+
+def test_so_com_plano_compartilha_so_a_ficha(db, user, make_plan):
+    make_plan("Peito", [("Supino reto", 4)])
+
+    assert botoes_de_compartilhar(render(build_dashboard_context(db, user))) == ["ficha"]
