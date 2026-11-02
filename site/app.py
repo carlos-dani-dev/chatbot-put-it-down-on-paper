@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request
+from markupsafe import Markup, escape
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -77,6 +78,21 @@ CONTENT = {
     ],
 }
 
+# Termos de Uso e Política de Privacidade (/termos e /privacidade). A versão é a mesma de
+# agent/terms.py: mudou o texto, suba as duas e o bot pede o aceite de novo (um teste confere)
+TERMS_VERSION = "2026-11-02"
+TERMS_UPDATED = "2 de novembro de 2026"
+# quem responde pelo serviço — vazio aparece destacado nas páginas como "[preencher: ...]"
+LEGAL = {"owner": "Arnaldo Gym AI", "document": "69.915.314/0001-10", "contact_email": "arnaldo.gym.ai@gmail.com"}
+LEGAL_CONTEXT = {
+    "terms_version": TERMS_VERSION,
+    "terms_updated": TERMS_UPDATED,
+    "legal": LEGAL,
+    # mesmos limites de agent/billing.py
+    "free": {"max_plans": 1, "max_exercises": 5, "daily_messages": 60},
+    "pro": {"price": "R$ 14,90", "days": 30},
+}
+
 app = FastAPI(title="Arnaldo.gym.ai", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -95,7 +111,25 @@ def asset(path: str) -> str:
 templates.env.globals["asset"] = asset
 
 
+def todo(value: str, label: str) -> str:
+    """Campo das páginas legais ainda não preenchido em LEGAL: aparece destacado, impossível de passar batido."""
+    return value or Markup(f'<span class="todo">[preencher: {escape(label)}]</span>')
+
+
+templates.env.filters["todo"] = todo
+
+
 # a página inicial do site fica em "/". HEAD além de GET: monitores como o UptimeRobot checam com HEAD
 @app.api_route("/", methods=["GET", "HEAD"])
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"content": CONTENT})
+
+
+@app.api_route("/termos", methods=["GET", "HEAD"])
+async def terms(request: Request):
+    return templates.TemplateResponse(request, "termos.html", LEGAL_CONTEXT)
+
+
+@app.api_route("/privacidade", methods=["GET", "HEAD"])
+async def privacy(request: Request):
+    return templates.TemplateResponse(request, "privacidade.html", LEGAL_CONTEXT)

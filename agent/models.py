@@ -35,6 +35,9 @@ class User(Base):
     state: Mapped[str] = mapped_column(String, nullable=False, default="onboarding", server_default="onboarding")
     state_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict, server_default=text("'{}'"))
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    # aceite dos Termos de Uso e da Política de Privacidade (ver agent/terms.py); NULL = nunca aceitou
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms_version: Mapped[str | None] = mapped_column(String)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

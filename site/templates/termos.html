@@ -1,0 +1,49 @@
+{% extends "legal.html" %}
+{% block title %}Termos de Uso{% endblock %}
+{% block eyebrow %}Arnaldo.gym.ai{% endblock %}
+{% block doc %}
+<p>Estes Termos explicam as regras para usar o <strong>Arnaldo</strong>, um assistente de inteligência artificial no WhatsApp que registra treinos de musculação e acompanha a evolução de cargas. O serviço é oferecido por {{ legal.owner | todo("nome ou razão social do responsável") }}, inscrito no CPF/CNPJ {{ legal.document | todo("CPF ou CNPJ") }} ("nós").</p>
+
+<h2>1. Aceite</h2>
+<p>Para usar o Arnaldo, você precisa aceitar estes Termos e a <a href="/privacidade">Política de Privacidade</a> tocando no botão <strong>"Aceito"</strong> enviado no WhatsApp. Guardamos a data e a versão do que você aceitou. Se não concordar, não use o serviço.</p>
+<p>O Arnaldo é destinado a maiores de 18 anos.</p>
+
+<h2>2. Não é orientação profissional</h2>
+<p>O Arnaldo <strong>não substitui</strong> um profissional de educação física, médico ou nutricionista. Ele registra o que você informa e mostra a sua evolução, mas não prescreve treinos nem avalia a sua condição física. Procure um profissional antes de começar ou mudar sua rotina de exercícios. Você treina por sua conta e risco.</p>
+
+<h2>3. A inteligência artificial pode errar</h2>
+<p>As mensagens são interpretadas por inteligência artificial, que pode entender errado um exercício, uma carga ou um número de repetições. Confira os registros e os gráficos e corrija pelo próprio chat quando algo não estiver certo.</p>
+
+<h2>4. Planos</h2>
+<ul>
+  <li><strong>Grátis:</strong> registro de treinos, página de resultados, {{ free.max_plans }} plano de treino com até {{ free.max_exercises }} exercícios e até {{ free.daily_messages }} mensagens por dia.</li>
+  <li><strong>Pro:</strong> {{ pro.price }} por {{ pro.days }} dias, com planos e exercícios ilimitados e sem limite diário de mensagens.</li>
+</ul>
+<p>O Pro é pago por <strong>Pix</strong>, processado pelo Mercado Pago, e é ativado assim que o pagamento é confirmado. <strong>Não há renovação automática</strong>: ao fim dos {{ pro.days }} dias, você volta ao plano Grátis e só paga de novo se quiser, mandando <strong>/pro</strong> no chat. Seus treinos e planos continuam salvos.</p>
+<p>Os limites e o preço podem mudar no futuro, mas nunca durante um período que você já pagou.</p>
+
+<h2>5. Direito de arrependimento e reembolso</h2>
+<p>Pelo Código de Defesa do Consumidor (art. 49), você pode desistir da compra do Pro em até <strong>7 dias</strong> após o pagamento e receber o valor integral de volta. Basta pedir pelo contato abaixo. Depois desse prazo, o período pago não é reembolsável, mas segue valendo até o fim.</p>
+
+<h2>6. Uso adequado</h2>
+<p>Ao usar o Arnaldo, você se compromete a não:</p>
+<ul>
+  <li>enviar conteúdo ilegal, ofensivo ou que viole direitos de outras pessoas;</li>
+  <li>usar robôs, automações ou qualquer meio para sobrecarregar o serviço;</li>
+  <li>tentar acessar dados de outros usuários ou explorar falhas do sistema.</li>
+</ul>
+<p>Podemos suspender ou encerrar o acesso de quem descumprir estas regras.</p>
+
+<h2>7. Disponibilidade</h2>
+<p>O Arnaldo funciona pelo WhatsApp e depende de serviços de terceiros (Meta, provedores de IA, hospedagem e pagamento). Fazemos o possível para mantê-lo no ar, mas ele pode ficar indisponível por manutenção ou falhas fora do nosso controle. O serviço é oferecido no estado em que se encontra.</p>
+
+<h2>8. Página de resultados</h2>
+<p>O link da sua página de resultados é pessoal e expira depois de um tempo. Qualquer pessoa com o link aberto consegue ver seus resultados, então só compartilhe com quem quiser. O PDF gerado pelo botão <strong>Compartilhar</strong> vai para quem você escolher.</p>
+
+<h2>9. Alterações nestes Termos</h2>
+<p>Podemos atualizar estes Termos. Quando isso acontecer, a versão no topo desta página muda e o Arnaldo vai pedir que você aceite a versão nova no WhatsApp antes de continuar.</p>
+
+<h2>10. Contato e foro</h2>
+<p>Dúvidas, pedidos de reembolso ou reclamações: {{ legal.contact_email | todo("e-mail de contato") }}.</p>
+<p>Estes Termos seguem a lei brasileira. Fica eleito o foro do domicílio do usuário.</p>
+{% endblock %}

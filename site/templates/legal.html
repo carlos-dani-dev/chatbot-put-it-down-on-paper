@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1118">
+<title>{% block title %}{% endblock %} · Arnaldo.gym.ai</title>
+<link rel="icon" href="{{ asset('arnaldo.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { ink: '#0B1118', card: '#121B26', line: '#1F2B3A', muted: '#8B97A7', dim: '#5F6B7A', wa: '#25D366', wadark: '#128C7E' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        letterSpacing: { display: '-0.035em', eyebrow: '0.2em' },
+      },
+    },
+  };
+</script>
+<style>
+  .doc h2 { margin-top: 2.5rem; margin-bottom: .75rem; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+  .doc p, .doc li { font-size: 15px; line-height: 1.7; color: #C5CDD8; }
+  .doc p + p, .doc ul + p { margin-top: .75rem; }
+  .doc ul { margin-top: .5rem; padding-left: 1.25rem; list-style: disc; }
+  .doc li + li { margin-top: .35rem; }
+  .doc li::marker { color: #25D366; }
+  .doc strong { color: #fff; font-weight: 600; }
+  .doc a { color: #25D366; text-decoration: underline; text-underline-offset: 3px; }
+  /* trechos que o dono do produto ainda precisa preencher */
+  .doc .todo { background: #3A2F0B; color: #FFD666; padding: 0 .3em; border-radius: 4px; }
+</style>
+</head>
+<body class="bg-ink text-white font-sans antialiased">
+  <header class="sticky top-0 z-30 bg-ink/90 backdrop-blur border-b border-line">
+    <nav class="max-w-[760px] mx-auto px-4 h-[68px] flex items-center justify-between">
+      <a href="/" class="flex items-center">
+        <span class="h-9 w-9 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="{{ asset('arnaldo-avatar.png') }}" alt="" class="w-[80%] h-[80%]"></span>
+        <span class="ml-3 text-[17px] font-bold">Arnaldo</span>
+        <span class="ml-3 text-[17px] text-muted">.gym.ai</span>
+      </a>
+      <a href="/" class="text-[14px] text-muted hover:text-white">Voltar ao site</a>
+    </nav>
+  </header>
+
+  <main class="max-w-[760px] mx-auto px-4 pt-12 pb-20">
+    <p class="text-wa text-[12px] font-semibold uppercase tracking-eyebrow">{% block eyebrow %}{% endblock %}</p>
+    <h1 class="mt-3 text-[34px] sm:text-[44px] font-extrabold tracking-display leading-tight">{{ self.title() }}</h1>
+    <p class="mt-3 text-[14px] text-dim">Versão {{ terms_version }} · em vigor desde {{ terms_updated }}</p>
+    <article class="doc mt-6">
+      {% block doc %}{% endblock %}
+    </article>
+  </main>
+
+  <footer class="max-w-[760px] mx-auto px-4">
+    <div class="border-t border-line py-10 flex flex-col sm:flex-row gap-3 justify-between text-[14px] text-muted">
+      <span>© Arnaldo.gym.ai</span>
+      <span class="flex gap-5"><a href="/termos" class="hover:text-white">Termos de Uso</a><a href="/privacidade" class="hover:text-white">Privacidade</a></span>
+    </div>
+  </footer>
+</body>
+</html>

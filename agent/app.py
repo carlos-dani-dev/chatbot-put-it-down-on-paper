@@ -24,7 +24,7 @@ from agent.repos import chat_message_repo
 from agent.repos.user_repo import get_or_create_locked_user
 from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply, MultiTextReply
 
-from . import billing
+from . import billing, terms
 from .clients.mercadopago import verify_webhook_signature
 from .dashboard import build_dashboard_context
 from .llm_usage import end_turn, start_turn
@@ -89,11 +89,13 @@ def _process_turn(from_number: str, text: str | None, button_id: str | None, mes
         user.last_message_at = datetime.now(timezone.utc)
         gap = (user.last_message_at - last_seen) if last_seen else None
 
-        if text:
+        # antes do aceite dos termos o conteúdo do que a pessoa escreve não é gravado
+        if text and terms.has_accepted(user):
             chat_message_repo.log_message(db, user, "user", text, wa_message_id=message_id)
 
-        intercept_result = None
-        if button_id is None:
+        # o aceite vem antes de tudo: sem ele, nada chega na LLM nem gera Pix
+        intercept_result = terms.terms_intercept(db, user, text, button_id)
+        if intercept_result is None and button_id is None:
             # comandos vêm antes do limite: o /pro precisa funcionar justamente pra quem estourou
             intercept_result = handle_universal_command(db, user, text)
         if intercept_result is None:

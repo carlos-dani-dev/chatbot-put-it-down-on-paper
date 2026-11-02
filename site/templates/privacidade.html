@@ -1,0 +1,60 @@
+{% extends "legal.html" %}
+{% block title %}Política de Privacidade{% endblock %}
+{% block eyebrow %}Arnaldo.gym.ai{% endblock %}
+{% block doc %}
+<p>Esta Política explica quais dados o <strong>Arnaldo</strong> trata, para quê e com quem, conforme a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018). O controlador dos dados é {{ legal.owner | todo("nome ou razão social do responsável") }}, CPF/CNPJ {{ legal.document | todo("CPF ou CNPJ") }}.</p>
+
+<h2>1. Quais dados tratamos</h2>
+<ul>
+  <li><strong>Número do WhatsApp</strong>, que identifica a sua conta.</li>
+  <li><strong>Mensagens</strong> que você envia ao Arnaldo depois de aceitar estes termos e as respostas dele.</li>
+  <li><strong>Dados de treino</strong>: planos, exercícios, séries, cargas, repetições e datas dos treinos.</li>
+  <li><strong>Dados de pagamento do Pro</strong>: valor, status e identificador da cobrança Pix. Não recebemos nem guardamos dados bancários.</li>
+  <li><strong>Dados de uso</strong>: horário das mensagens, em que parte da conversa você estava e quanto processamento de IA cada mensagem consumiu.</li>
+  <li><strong>Registros técnicos</strong> do servidor e de erros, usados para manter o serviço funcionando.</li>
+</ul>
+<p>Antes de você aceitar os termos, guardamos apenas o seu número e o fato de que ainda não houve aceite. O conteúdo dessas mensagens não é salvo na sua conversa nem enviado à inteligência artificial.</p>
+<p>Se você contar ao Arnaldo informações sobre a sua saúde (como lesões ou condições físicas), elas podem ser consideradas <strong>dados sensíveis</strong>. Nesse caso, o tratamento se baseia no seu consentimento, dado de forma destacada pelo botão de aceite. Evite enviar informações de saúde que não sejam necessárias para registrar seus treinos.</p>
+
+<h2>2. Para que usamos</h2>
+<ul>
+  <li><strong>Prestar o serviço</strong>: entender suas mensagens, registrar treinos e montar sua página de resultados (base legal: execução de contrato, art. 7º, V).</li>
+  <li><strong>Cobrar o Pro</strong> e cumprir obrigações legais e fiscais (art. 7º, II e V).</li>
+  <li><strong>Segurança e prevenção de abuso</strong>, como o limite diário de mensagens do plano Grátis, e <strong>melhoria do serviço</strong> com métricas de uso (legítimo interesse, art. 7º, IX).</li>
+</ul>
+<p>Não vendemos seus dados e não os usamos para publicidade.</p>
+
+<h2>3. Com quem compartilhamos</h2>
+<p>Para funcionar, o Arnaldo usa fornecedores que tratam dados em nosso nome:</p>
+<ul>
+  <li><strong>Meta (WhatsApp)</strong>: entrega das mensagens.</li>
+  <li><strong>Google (Gemini)</strong>: inteligência artificial que interpreta as mensagens.</li>
+  <li><strong>Supabase</strong>: banco de dados.</li>
+  <li><strong>Amazon Web Services</strong>: servidor onde o Arnaldo roda.</li>
+  <li><strong>Mercado Pago</strong>: cobranças Pix do plano Pro.</li>
+  <li><strong>Sentry</strong>: monitoramento de erros. O número de telefone e o texto das mensagens chegam lá mascarados.</li>
+  <li><strong>Cloudflare</strong>: entrega deste site.</li>
+</ul>
+<p>Alguns desses fornecedores processam dados fora do Brasil. Essa transferência internacional segue as garantias exigidas pela LGPD (art. 33).</p>
+
+<h2>4. Por quanto tempo guardamos</h2>
+<p>Enquanto você usar o Arnaldo. Se pedir a exclusão, apagamos seus dados, exceto os registros de pagamento que a lei nos obriga a manter pelo prazo legal. Registros técnicos do servidor são apagados periodicamente.</p>
+
+<h2>5. Seus direitos</h2>
+<p>Pela LGPD (art. 18), você pode pedir a qualquer momento:</p>
+<ul>
+  <li>confirmação de que tratamos seus dados e acesso a eles;</li>
+  <li>correção de dados incompletos ou errados;</li>
+  <li>exclusão dos seus dados;</li>
+  <li>portabilidade dos seus dados;</li>
+  <li>informações sobre com quem os compartilhamos;</li>
+  <li>revogação do consentimento.</li>
+</ul>
+<p>Para exercer qualquer um deles, escreva para {{ legal.contact_email | todo("e-mail de contato") }}. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).</p>
+
+<h2>6. Segurança</h2>
+<p>Os dados ficam em serviços com acesso restrito e conexões criptografadas. O link da sua página de resultados é assinado e expira depois de um tempo.</p>
+
+<h2>7. Alterações nesta Política</h2>
+<p>Quando esta Política mudar, a versão no topo desta página muda e o Arnaldo pede o seu aceite de novo no WhatsApp. Veja também os <a href="/termos">Termos de Uso</a>.</p>
+{% endblock %}

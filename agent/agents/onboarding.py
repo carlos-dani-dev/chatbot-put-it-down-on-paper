@@ -7,7 +7,8 @@ from google.genai import types
 from agent.config import settings
 from agent.llm_usage import record_gemini
 from agent.shared import ARNALDO_STYLE_RULES, ONBOARDING_FEATURES, _fix_whatsapp_bold, arnaldo_header, enter_idle
-from agent.schemas.replies import TextReply
+from agent.schemas.replies import ButtonsReply, TextReply
+from agent.terms import ACCEPT_BUTTONS, TERMS_LINKS, has_accepted
 
 from ..tools import onboarding as tools_mod
 from ..context.onboarding import build_context
@@ -17,13 +18,17 @@ logger = logging.getLogger("agent.onboarding")
 _MODEL = "gemini-flash-lite-latest"
 _TEMPERATURE = 0.1
 
-_WELCOME_MESSAGE = (
+_WELCOME_INTRO = (
     "💪 Eai, gym bro! Eu sou o *Arnaldo*, seu parceiro pra controlar carga e registrar treinos.\n\n"
     "*Registre treinos*, séries e cargas em linguagem natural\n"
     "*Crie planos de treino* ou treine livre\n"
     "*Acompanhe sua evolução* com recordes e gráficos\n\n"
     "Quer planos e exercícios ilimitados? Pra ser *Pro*, é só me mandar */pro* a qualquer momento.\n\n"
-    "Vamos começar?"
+)
+_WELCOME_MESSAGE = _WELCOME_INTRO + "Vamos começar?"
+# quem ainda não aceitou os termos (quase sempre): o botão é o aceite e já leva pro menu (agent/terms.py)
+_WELCOME_WITH_TERMS = (
+    _WELCOME_INTRO + "Pra começar, é só aceitar os *Termos de Uso* e a *Política de Privacidade*:\n\n" + TERMS_LINKS
 )
 
 
@@ -52,6 +57,8 @@ def handle(db, user, text, button_id=None):
 
     if ctx.step is None:
         user.state_data = {"step": "awaiting_user_onboarding_reply"}
+        if not has_accepted(user):
+            return ButtonsReply(_WELCOME_WITH_TERMS, ACCEPT_BUTTONS), "onboarding"
         return TextReply(_WELCOME_MESSAGE), "onboarding"
 
     if not text:
