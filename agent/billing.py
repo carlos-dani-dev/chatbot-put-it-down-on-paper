@@ -345,28 +345,47 @@ def pro_charge_reply(result: dict) -> TextReply | MultiTextReply:
 # Limite diário de mensagens do plano grátis — checado antes de qualquer agente,
 # então mensagem barrada não gasta token nenhum.
 # --------------------------------------------------------------------------
+_LIMIT_WARNING_PREFIX = "🙏 Você usou as"
+
+
+def _since_midnight() -> datetime:
+    return datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+
 def user_messages_today(db: Any, user: User) -> int:
     """Mensagens do usuário desde a meia-noite de Brasília (já contando a que acabou de chegar)."""
-    midnight = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
     return db.scalar(
         select(func.count()).select_from(ChatMessage).where(
             ChatMessage.user_id == user.id,
             ChatMessage.role == "user",
-            ChatMessage.created_at >= midnight.astimezone(timezone.utc),
+            ChatMessage.created_at >= _since_midnight(),
         )
     )
 
 
+def _warned_today(db: Any, user: User) -> bool:
+    """O aviso já saiu hoje? Olha a própria resposta gravada, e não a contagem: a mensagem que
+    passa do limite pode ter sido um /pro ou um botão de aceite, tratados antes do limite."""
+    return db.scalar(
+        select(func.count()).select_from(ChatMessage).where(
+            ChatMessage.user_id == user.id,
+            ChatMessage.role == "assistant",
+            ChatMessage.content.startswith(_LIMIT_WARNING_PREFIX),
+            ChatMessage.created_at >= _since_midnight(),
+        )
+    ) > 0
+
+
 def daily_limit_intercept(db: Any, user: User) -> tuple[TextReply | None, str] | None:
-    """None: segue normal. (aviso, estado): acabou de passar do limite, avisa uma vez.
+    """None: segue normal. (aviso, estado): passou do limite, avisa uma vez por dia.
     (None, estado): já foi avisado hoje — não responde nada, pra quem insiste não render resposta."""
     count = user_messages_today(db, user)
     if count <= FREE_DAILY_MESSAGES or active_pro_until(db, user) is not None:
         return None
-    if count == FREE_DAILY_MESSAGES + 1:
+    if not _warned_today(db, user):
         logger.info("billing: limite diário atingido user=%s", user.phone_number)
         return TextReply(
-            f"🙏 Você usou as {FREE_DAILY_MESSAGES} mensagens de hoje do plano *Grátis*. "
+            f"{_LIMIT_WARNING_PREFIX} {FREE_DAILY_MESSAGES} mensagens de hoje do plano *Grátis*. "
             "À meia-noite libera de novo.\n\n"
             "Pra usar sem limite, é só mandar */pro*."
         ), user.state
