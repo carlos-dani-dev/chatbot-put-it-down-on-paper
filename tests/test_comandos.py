@@ -21,7 +21,7 @@ def test_variacoes_de_caixa_e_espaco_sao_aceitas(db, user, mercadopago, texto):
 
 @pytest.mark.parametrize("texto", [
     "quero ser pro",     # sem a barra: segue pro agente, que entende pedidos em texto livre
-    "/pro agora",
+    "/pro quero assinar",  # mais de uma palavra depois do /pro: texto comum (uma só seria cupom)
     "pro",
     "/ pro",
     "/resultados",       # comando removido: vira mensagem comum

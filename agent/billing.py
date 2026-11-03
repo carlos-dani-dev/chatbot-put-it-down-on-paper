@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 
 from .config import get_payment_client, settings
-from .models import ChatMessage, PixCharge, User
+from .models import ChatMessage, Coupon, CouponRedemption, PixCharge, User
 from .repos import plan_repo
 from .schemas.replies import MultiTextReply, TextReply
 
@@ -48,17 +48,25 @@ def format_local_time(dt: datetime) -> str:
 
 
 def pro_until(db: Any, user_id: int) -> datetime | None:
-    """Fim do Pro somando todos os pagamentos aprovados: pagar com o Pro ainda ativo
-    estende a partir do fim atual, em vez de perder os dias que sobravam."""
+    """Fim do Pro somando os pagamentos aprovados e os cupons resgatados, na ordem em que
+    aconteceram: cada um conta a partir do fim do Pro atual (se ainda ativo) ou da própria data,
+    então pagar adiantado ou usar um cupom com o Pro ativo não faz perder os dias que sobravam."""
     paid = db.scalars(
         select(PixCharge.paid_at)
         .where(PixCharge.user_id == user_id, PixCharge.status == "approved", PixCharge.paid_at.is_not(None))
-        .order_by(PixCharge.paid_at)
     ).all()
+    redeemed = db.execute(
+        select(CouponRedemption.redeemed_at, Coupon.days)
+        .join(Coupon, Coupon.id == CouponRedemption.coupon_id)
+        .where(CouponRedemption.user_id == user_id)
+    ).all()
+    events = [(_aware(paid_at), PRO_DAYS) for paid_at in paid]
+    events += [(_aware(redeemed_at), days) for redeemed_at, days in redeemed]
+
     until = None
-    for paid_at in paid:
-        start = max(until, _aware(paid_at)) if until else _aware(paid_at)
-        until = start + timedelta(days=PRO_DAYS)
+    for when, days in sorted(events):
+        start = max(until, when) if until else when
+        until = start + timedelta(days=days)
     return until
 
 
@@ -183,6 +191,63 @@ def apply_payment_update(db: Any, payment_id: str) -> ProActivated | None:
     charge.status = new_status
     logger.info("billing: cobrança %s payment_id=%s", new_status, payment_id)
     return None
+
+
+# --------------------------------------------------------------------------
+# Cupons — "/pro CODIGO" libera o Pro grátis por `coupon.days` dias, uma vez por pessoa.
+# --------------------------------------------------------------------------
+@dataclass
+class CouponCheck:
+    status: str  # ok | invalid | exhausted | already_used
+    coupon: Coupon | None = None
+
+
+def check_coupon(db: Any, user: User, code: str, lock: bool = False) -> CouponCheck:
+    """Diz se o usuário pode usar o cupom, sem resgatar. `lock` trava a linha do cupom até o fim
+    da transação: dois resgates simultâneos da última vaga não passam os dois do limite."""
+    query = select(Coupon).where(func.upper(Coupon.code) == code.strip().upper())
+    coupon = db.scalar(query.with_for_update() if lock else query)
+    now = datetime.now(timezone.utc)
+    if coupon is None or not coupon.active or (coupon.expires_at is not None and _aware(coupon.expires_at) <= now):
+        return CouponCheck("invalid")
+
+    used = db.scalar(select(func.count()).select_from(CouponRedemption).where(
+        CouponRedemption.coupon_id == coupon.id, CouponRedemption.user_id == user.id))
+    if used:
+        return CouponCheck("already_used", coupon)
+
+    if coupon.max_redemptions is not None:
+        total = db.scalar(select(func.count()).select_from(CouponRedemption).where(CouponRedemption.coupon_id == coupon.id))
+        if total >= coupon.max_redemptions:
+            return CouponCheck("exhausted", coupon)
+    return CouponCheck("ok", coupon)
+
+
+def redeem_coupon(db: Any, user: User, code: str) -> CouponCheck:
+    check = check_coupon(db, user, code, lock=True)
+    if check.status == "ok":
+        db.add(CouponRedemption(coupon_id=check.coupon.id, user_id=user.id, redeemed_at=datetime.now(timezone.utc)))
+        db.flush()
+        logger.info(f"cupom resgatado user_id={user.id} cupom={check.coupon.code} dias={check.coupon.days}")
+    return check
+
+
+def coupon_error_reply(check: CouponCheck) -> TextReply:
+    if check.status == "already_used":
+        return TextReply("🙂 Você já usou esse cupom.")
+    if check.status == "exhausted":
+        return TextReply("😕 Esse cupom já atingiu o limite de usos.\n\nPra assinar o *Pro*, é só mandar */pro*.")
+    return TextReply("😕 Esse cupom não é válido ou já expirou.\n\nPra assinar o *Pro*, é só mandar */pro*.")
+
+
+def redeem_coupon_reply(db: Any, user: User, code: str) -> TextReply:
+    check = redeem_coupon(db, user, code)
+    if check.status != "ok":
+        return coupon_error_reply(check)
+    return TextReply(
+        f"🎉 Cupom aplicado! Seu *Pro* está ativo até {format_local_time(active_pro_until(db, user))}.\n\n"
+        "Agora você tem planos e exercícios ilimitados. Bora treinar? 💪"
+    )
 
 
 # --------------------------------------------------------------------------

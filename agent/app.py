@@ -17,7 +17,6 @@ from fastapi.templating import Jinja2Templates
 
 from agent.config import get_provider, settings
 from agent.database import engine, SessionLocal
-from .resume_check import handle_resume_check
 from .commands import handle_universal_command
 from agent.models import Base, User
 from agent.repos import chat_message_repo
@@ -83,11 +82,7 @@ def _process_turn(from_number: str, text: str | None, button_id: str | None, mes
         user = get_or_create_locked_user(db, from_number)
         # erros desta mensagem ficam ligados ao user_id no Sentry (nunca ao telefone)
         sentry_sdk.set_user({"id": str(user.id)})
-        last_seen = user.last_message_at
-        if last_seen is not None and last_seen.tzinfo is None:
-            last_seen = last_seen.replace(tzinfo=timezone.utc)
         user.last_message_at = datetime.now(timezone.utc)
-        gap = (user.last_message_at - last_seen) if last_seen else None
 
         # antes do aceite dos termos o conteúdo do que a pessoa escreve não é gravado
         if text and terms.has_accepted(user):
@@ -101,8 +96,6 @@ def _process_turn(from_number: str, text: str | None, button_id: str | None, mes
         if intercept_result is None:
             # vale também pra botões, que senão iriam direto pro agente (e pra LLM)
             intercept_result = billing.daily_limit_intercept(db, user)
-        if intercept_result is None and button_id is None:
-            intercept_result = handle_resume_check(db, user, text, gap)
 
         if intercept_result is not None:
             reply, next_state = intercept_result

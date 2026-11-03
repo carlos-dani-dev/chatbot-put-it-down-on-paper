@@ -12,6 +12,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -192,6 +193,35 @@ class PixCharge(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped["User"] = relationship("User")
+
+
+# --------------------------------------------------------------------------
+# Cupons de Pro grátis — o usuário manda "/pro CODIGO". Criados direto no banco
+# (SQL editor do Supabase); cada resgate soma `days` ao Pro, igual a um pagamento.
+# --------------------------------------------------------------------------
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String, unique=True, nullable=False)  # comparado sem diferenciar maiúsculas
+    days: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_redemptions: Mapped[int | None] = mapped_column(Integer)  # NULL = sem limite de pessoas
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # NULL = não expira
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    note: Mapped[str | None] = mapped_column(String)  # pra quem/por que foi criado
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class CouponRedemption(Base):
+    __tablename__ = "coupon_redemptions"
+    __table_args__ = (UniqueConstraint("coupon_id", "user_id", name="uq_coupon_redemptions_coupon_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    coupon_id: Mapped[int] = mapped_column(Integer, ForeignKey("coupons.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    redeemed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    coupon: Mapped["Coupon"] = relationship("Coupon")
 
 
 # --------------------------------------------------------------------------
