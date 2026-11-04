@@ -145,7 +145,7 @@ def add_to_draft(
     draft = {**draft, "items": draft["items"] + validated_items}
     _set_draft(user, draft)
 
-    return {"ok": True, "plan_name": draft["name"], "items": draft["items"]}
+    return {"ok": True, "plan_name": draft["name"], "items": draft["items"], "editing": draft.get("plan_id") is not None}
 
 
 def edit_plan(db: Any, user: User, ctx: PlanningContext, plan_id: str) -> dict:
@@ -187,7 +187,7 @@ def remove_from_draft(db: Any, user: User, ctx: PlanningContext, exercises: list
 
     items = [item for i, item in enumerate(draft["items"]) if i not in set(found)]
     _set_draft(user, {**draft, "items": items})
-    return {"ok": True, "plan_name": draft["name"], "items": items}
+    return {"ok": True, "plan_name": draft["name"], "items": items, "editing": draft.get("plan_id") is not None}
 
 
 def set_sets(db: Any, user: User, ctx: PlanningContext, exercise: str, target_sets: int) -> dict:
@@ -205,7 +205,7 @@ def set_sets(db: Any, user: User, ctx: PlanningContext, exercise: str, target_se
     items = [dict(item) for item in draft["items"]]
     items[found[0]]["target_sets"] = int(target_sets)
     _set_draft(user, {**draft, "items": items})
-    return {"ok": True, "plan_name": draft["name"], "items": items}
+    return {"ok": True, "plan_name": draft["name"], "items": items, "editing": draft.get("plan_id") is not None}
 
 
 def save_draft(db: Any, user: User, ctx: PlanningContext) -> dict:
@@ -248,8 +248,9 @@ def discard_draft(db: Any, user: User, ctx: PlanningContext) -> dict:
         return {"ok": False, "error": "Não há nenhum rascunho pra descartar."}
     _clear_draft(user)
     if ctx.draft.get("plan_id") is not None:
-        return {"ok": True, "next_state": "idle", "note": f"edição descartada: o plano '{ctx.draft['name']}' continua como estava"}
-    return {"ok": True, "next_state": "idle"}
+        return {"ok": True, "next_state": "idle", "plan_name": ctx.draft["name"], "editing": True,
+                "note": f"edição descartada: o plano '{ctx.draft['name']}' continua como estava"}
+    return {"ok": True, "next_state": "idle", "plan_name": ctx.draft["name"], "editing": False}
 
 
 def list_plans(db: Any, user: User, ctx: PlanningContext) -> dict:
@@ -313,6 +314,53 @@ def go_to_session(db: Any, user: User, ctx: PlanningContext) -> dict:
             ),
         }
     return {"ok": True, "next_state": "session_setup"}
+
+
+# --------------------------------------------------------------------------
+# Respostas montadas em código. Depois de uma ação que deu certo, a resposta é só "como o plano
+# ficou + próximos passos" — uma 2ª chamada à LLM pra escrever isso custava o dobro de cada
+# mensagem do planejamento. Erros e limites continuam voltando pra LLM explicar.
+# --------------------------------------------------------------------------
+def _plan_lines(items: list[dict]) -> str:
+    return "\n".join(f"• {i['name']} ({i['target_sets']} {'série' if i['target_sets'] == 1 else 'séries'})"
+                     for i in items)
+
+
+def _draft_reply(result: dict, headline: str) -> str:
+    name = result["plan_name"]
+    if not result["items"]:
+        return (f"{headline}\n\nO plano *{name}* ficou sem exercícios. Manda os exercícios com as séries "
+                "(ex.: supino 3 séries) ou, se quiser desistir, *Descartar o plano*.")
+    status = "em edição, ainda não salvo" if result.get("editing") else "rascunho, ainda não salvo"
+    return (f"{headline}\n\n📋 *{name}* ({status}):\n{_plan_lines(result['items'])}\n\n"
+            "Quer *Adicionar exercícios*, *Remover um exercício* ou *Salvar o plano*?")
+
+
+def coded_reply(tool: str, result: dict) -> str | None:
+    """A resposta pronta pra uma ferramenta que deu certo, ou None se a LLM precisa responder."""
+    if not isinstance(result, dict) or not result.get("ok"):
+        return None
+    if tool == "add_to_draft":
+        return _draft_reply(result, "✅ Anotado!")
+    if tool == "remove_from_draft":
+        return _draft_reply(result, "🗑️ Tirei do plano.")
+    if tool == "set_sets":
+        return _draft_reply(result, "✅ Séries atualizadas.")
+    if tool == "save_draft":
+        verb = "atualizado" if result.get("updated") else "salvo"
+        return f"✅ Plano *{result['plan_name']}* {verb}! Quando quiser, é só *Começar um treino* com ele. 💪"
+    if tool == "discard_draft":
+        if result.get("editing"):
+            return f"👍 Descartei as mudanças: o plano *{result['plan_name']}* continua como estava."
+        return "👍 Rascunho descartado. Quando quiser, é só *Criar um plano* ou *Começar um treino*."
+    if tool == "request_delete_plan":
+        return (f"⚠️ Quer mesmo excluir o plano *{result['plan_name']}*? Os treinos feitos com ele deixam de "
+                "aparecer na página de resultados.\n\nResponda *sim* pra confirmar ou *não* pra cancelar.")
+    if tool == "confirm_pending_action" and result.get("action") == "delete_plan":
+        return f"🗑️ Plano *{result['plan_name']}* excluído. Quando quiser, é só *Criar um plano* ou *Começar um treino*."
+    if tool == "cancel_pending_action":
+        return "👍 Beleza, não excluí nada."
+    return None  # edit_plan, listas etc.: a LLM ainda pode ter mais o que fazer com o resultado
 
 
 def assinar_pro(db: Any, user: User, ctx: PlanningContext) -> dict:

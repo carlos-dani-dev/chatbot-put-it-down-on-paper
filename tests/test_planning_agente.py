@@ -13,10 +13,9 @@ def test_mensagem_vazia_pede_o_plano(db, user):
     assert estado == "planning" and "Me manda o nome e os exercícios" in resposta.text
 
 
-def test_montar_rascunho_e_continuar_no_planejamento(db, user, gemini):
+def test_montar_rascunho_responde_em_codigo_com_uma_chamada(db, user, gemini):
     fake = gemini.script(
         gemini.call("add_to_draft", name="Peito", exercises=[{"name": "Supino reto com barra", "target_sets": 3}]),
-        gemini.text("Montei o *Peito* com Supino reto com barra (3x). Quer *Salvar o plano*?"),
     )
 
     resposta, estado = agente.handle(db, user, "plano peito: supino reto com barra 3 séries")
@@ -24,8 +23,27 @@ def test_montar_rascunho_e_continuar_no_planejamento(db, user, gemini):
     assert estado == "planning"
     assert user.state_data["plan_draft"]["items"] == [{"name": "Supino reto com barra", "target_sets": 3}]
     assert planos_ativos(db, user) == []
+    assert resposta.text == (
+        "✅ Anotado!\n\n📋 *Peito* (rascunho, ainda não salvo):\n• Supino reto com barra (3 séries)\n\n"
+        "Quer *Adicionar exercícios*, *Remover um exercício* ou *Salvar o plano*?"
+    )
+    assert len(fake.calls) == 1
+
+
+def test_duas_acoes_de_uma_vez_continuam_com_a_llm(db, user, gemini):
+    """"adiciona supino e salva": a LLM pediu duas ferramentas — a resposta em código cortaria o "salva"."""
+    fake = gemini.script(
+        gemini.calls(("add_to_draft", {"name": "Peito", "exercises": [{"name": "Supino", "target_sets": 3}]}),
+                     ("save_draft", {})),
+        gemini.call("save_draft"),
+    )
+
+    resposta, estado = agente.handle(db, user, "plano peito com supino 3 séries e salva")
+
+    assert len(fake.calls) == 2
     assert "Rascunho em andamento: 'Peito'" in fake.system_prompt(1)  # a 2ª rodada já enxerga o rascunho
-    assert "Salvar o plano" in resposta.text
+    assert estado == "idle" and planos_ativos(db, user) == ["Peito"]
+    assert resposta.text.startswith("✅ Plano *Peito* salvo!")
 
 
 def test_regra_de_copiar_o_nome_literal_esta_no_prompt(db, user, gemini):
@@ -34,26 +52,17 @@ def test_regra_de_copiar_o_nome_literal_esta_no_prompt(db, user, gemini):
     assert "EXATAMENTE o que o usuário escreveu" in fake.system_prompt(0)
 
 
-def test_salvar_grava_o_plano_e_fecha_com_uma_chamada_sem_ferramentas(db, user, gemini):
+def test_salvar_grava_o_plano_e_volta_pro_menu_sem_chamada_de_encerramento(db, user, gemini):
     user.state_data = {"plan_draft": {"name": "Peito", "items": [{"name": "Supino", "target_sets": 3}]}}
-    fake = gemini.script(gemini.call("save_draft"), gemini.text("Plano *Peito* salvo! Bora *Começar um treino*?"))
+    fake = gemini.script(gemini.call("save_draft"))
 
     resposta, estado = agente.handle(db, user, "salva")
 
     assert estado == "idle"
     assert planos_ativos(db, user) == ["Peito"]
     assert user.state_data == {}  # enter_idle limpa o estado
-    assert resposta.text == "Plano *Peito* salvo! Bora *Começar um treino*?"
-    assert fake.offered_tools(1) == []  # a chamada de encerramento não oferece ferramentas
-
-
-def test_salvar_sem_texto_da_llm_usa_o_padrao(db, user, gemini):
-    user.state_data = {"plan_draft": {"name": "Peito", "items": [{"name": "Supino", "target_sets": 3}]}}
-    gemini.script(gemini.call("save_draft"), gemini.text(""))
-
-    resposta, estado = agente.handle(db, user, "salva")
-
-    assert (resposta.text, estado) == ("✅ Pronto!", "idle")
+    assert resposta.text == "✅ Plano *Peito* salvo! Quando quiser, é só *Começar um treino* com ele. 💪"
+    assert len(fake.calls) == 1
 
 
 def test_limite_de_planos_volta_pra_llm_explicar_sem_criar_nada(db, user, make_plan, gemini):
@@ -84,16 +93,17 @@ def test_assinar_dentro_do_planejamento(db, user, gemini, mercadopago):
 def test_excluir_em_duas_mensagens(db, user, make_plan, gemini):
     plano = make_plan("Perna")
 
-    gemini.script(gemini.call("request_delete_plan", plan_id=f"plan:{plano.id}"), gemini.text("Excluo o *Perna*?"))
-    _resposta, estado = agente.handle(db, user, "apaga o perna")
+    gemini.script(gemini.call("request_delete_plan", plan_id=f"plan:{plano.id}"))
+    resposta, estado = agente.handle(db, user, "apaga o perna")
     assert estado == "planning" and planos_ativos(db, user) == ["Perna"]  # só propôs
+    assert "Responda *sim* pra confirmar" in resposta.text
 
-    fake = gemini.script(gemini.call("confirm_pending_action"), gemini.text("Plano *Perna* excluído."))
+    fake = gemini.script(gemini.call("confirm_pending_action"))
     resposta, estado = agente.handle(db, user, "sim")
 
     assert "confirm_pending_action" in fake.offered_tools(0)
     assert estado == "idle" and planos_ativos(db, user) == []
-    assert resposta.text == "Plano *Perna* excluído."
+    assert resposta.text.startswith("🗑️ Plano *Perna* excluído.")
 
 
 def test_ir_treinar_sem_rascunho_abre_a_escolha_do_treino(db, user, gemini):

@@ -167,6 +167,15 @@ def handle(db, user, text, button_id=None):
         if isinstance(result, dict) and result.pop("next_state", None) == "idle":
             next_state = "idle"
 
+        # uma ação só, que deu certo: a resposta sai do código, sem outra chamada à LLM. Se a LLM pediu
+        # mais de uma ferramenta de uma vez (ex.: "adiciona X e salva"), ela continua pra fazer o resto
+        reply = tools_mod.coded_reply(fc.name, result) if len(function_calls) == 1 else None
+        if reply is not None:
+            logger.info("agent.planning final_text(código) user=%s text=%r", user.phone_number, reply)
+            if next_state == "idle":
+                return enter_idle(db, user, TextReply(reply))
+            return TextReply(reply), next_state
+
         response_parts = [types.Part(function_response=types.FunctionResponse(name=fc.name, response=result))]
         contents.append(types.Content(role="user", parts=response_parts))
 

@@ -233,15 +233,14 @@ def test_adicionar_exercicios_no_plano_existente(db, user, push, gemini):
     assert "Editando o plano salvo 'Push'" in fake.system_prompt(1)
     assert "NUNCA invente exercícios" in fake.system_prompt(0)
 
-    gemini.script(
-        gemini.call("add_to_draft", exercises=[{"name": "Crucifixo", "target_sets": 3}]),
-        gemini.text("Push agora com Crucifixo (3x). Quer *Salvar o plano*?"),
-    )
-    agente.handle(db, user, "crucifixo 3 séries")
+    gemini.script(gemini.call("add_to_draft", exercises=[{"name": "Crucifixo", "target_sets": 3}]))
+    resposta, _ = agente.handle(db, user, "crucifixo 3 séries")
+    assert "📋 *Push* (em edição, ainda não salvo)" in resposta.text and "• Crucifixo (3 séries)" in resposta.text
 
-    gemini.script(gemini.call("save_draft"), gemini.text("Plano *Push* atualizado!"))
+    gemini.script(gemini.call("save_draft"))
     resposta, estado = agente.handle(db, user, "salva")
 
+    assert resposta.text.startswith("✅ Plano *Push* atualizado!")
     assert estado == "idle"
     assert plan_repo.list_active_plan_names(db, user) == ["Push"]
     assert itens(db, push)[-1] == ("Crucifixo", 3)
@@ -274,3 +273,47 @@ def test_nome_de_treino_ou_de_plano_nao_vira_exercicio(db, user, make_pro, make_
     r = tools.add_to_draft(db, user, ctx(db, user), [{"name": nome, "target_sets": 1}], name="Leg 2")
 
     assert r["ok"] is False and "nunca invente" in r["error"]
+
+
+# ---------------------------------------------------------------- respostas montadas em código
+
+def test_resposta_de_remover_e_mudar_series(db, user, push):
+    tools.edit_plan(db, user, ctx(db, user), f"plan:{push.id}")
+
+    removido = tools.coded_reply("remove_from_draft", tools.remove_from_draft(db, user, ctx(db, user), ["Supino"]))
+    mudado = tools.coded_reply("set_sets", tools.set_sets(db, user, ctx(db, user), "Desenvolvimento", 1))
+
+    assert removido.startswith("🗑️ Tirei do plano.") and "Supino" not in removido
+    assert "• Desenvolvimento (1 série)" in mudado  # singular
+
+
+def test_plano_que_ficou_vazio_pede_exercicios(db, user, make_plan):
+    plano = make_plan("Braço", [("Rosca", 3)])
+    tools.edit_plan(db, user, ctx(db, user), f"plan:{plano.id}")
+
+    texto = tools.coded_reply("remove_from_draft", tools.remove_from_draft(db, user, ctx(db, user), ["Rosca"]))
+
+    assert "ficou sem exercícios" in texto and "Salvar o plano" not in texto
+
+
+def test_descartar_edicao_responde_que_o_plano_continua(db, user, push):
+    tools.edit_plan(db, user, ctx(db, user), f"plan:{push.id}")
+    texto = tools.coded_reply("discard_draft", tools.discard_draft(db, user, ctx(db, user)))
+    assert texto == "👍 Descartei as mudanças: o plano *Push* continua como estava."
+
+
+def test_erro_e_abrir_plano_continuam_com_a_llm(db, user, push):
+    assert tools.coded_reply("add_to_draft", {"ok": False, "error": "x"}) is None
+    assert tools.coded_reply("edit_plan", tools.edit_plan(db, user, ctx(db, user), f"plan:{push.id}")) is None
+
+
+def test_limite_do_gratis_continua_explicado_pela_llm(db, user, push, gemini):
+    tools.edit_plan(db, user, ctx(db, user), f"plan:{push.id}")  # 3 exercícios: cabem mais 2 no Grátis
+    fake = gemini.script(
+        gemini.call("add_to_draft", exercises=[{"name": n, "target_sets": 3} for n in ("A", "B", "C")]),
+        gemini.text("No Grátis cabem só 5 exercícios por plano."),
+    )
+
+    resposta, _ = agente.handle(db, user, "adiciona A, B e C")
+
+    assert len(fake.calls) == 2 and resposta.text == "No Grátis cabem só 5 exercícios por plano."

@@ -81,14 +81,13 @@ def test_gerenciar_plano_delega_pro_planejamento_na_mesma_mensagem(db, user, mak
     plano = make_plan("Perna")
     fake = gemini.script(
         gemini.call("manage_plans"),                                         # idle
-        gemini.call("request_delete_plan", plan_id=f"plan:{plano.id}"),      # planning
-        gemini.text("Quer mesmo excluir o plano *Perna*?"),                  # planning
+        gemini.call("request_delete_plan", plan_id=f"plan:{plano.id}"),      # planning (resposta sai do código)
     )
 
     resposta, estado = agente.handle(db, user, "exclua o plano perna")
 
     assert estado == "planning"
-    assert resposta.text == "Quer mesmo excluir o plano *Perna*?"
+    assert resposta.text.startswith("⚠️ Quer mesmo excluir o plano *Perna*?")
     assert user.state_data["pending_action"]["type"] == "delete_plan"
     assert fake.calls[1]["contents"][0].parts[0].text == "exclua o plano perna"  # mesma mensagem
 

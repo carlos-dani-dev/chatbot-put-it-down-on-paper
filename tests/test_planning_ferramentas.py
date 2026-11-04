@@ -24,7 +24,7 @@ def planos_ativos(db, user):
 def test_criar_rascunho(db, user):
     r = tools.add_to_draft(db, user, build_context(db, user), ex(("Supino", 3)), name="Peito")
 
-    assert r == {"ok": True, "plan_name": "Peito", "items": ex(("Supino", 3))}
+    assert r == {"ok": True, "plan_name": "Peito", "items": ex(("Supino", 3)), "editing": False}
     assert rascunho(user) == {"name": "Peito", "items": ex(("Supino", 3))}
     assert planos_ativos(db, user) == []  # rascunho não é plano salvo
 
@@ -86,7 +86,7 @@ def test_descartar(db, user):
 
     r = tools.discard_draft(db, user, build_context(db, user))
 
-    assert r == {"ok": True, "next_state": "idle"}
+    assert r == {"ok": True, "next_state": "idle", "plan_name": "Peito", "editing": False}
     assert rascunho(user) is None and planos_ativos(db, user) == []
 
 
