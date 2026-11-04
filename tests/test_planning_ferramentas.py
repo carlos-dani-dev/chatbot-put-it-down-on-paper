@@ -142,7 +142,7 @@ def test_listar_e_ver_exercicios(db, user, make_plan):
     plano = make_plan("Perna", [("Agachamento livre", 3)])
     ctx = build_context(db, user)
 
-    assert tools.list_plans(db, user, ctx)["plans"] == ["Perna"]
+    assert tools.list_plans(db, user, ctx)["plans"] == [{"plan_id": f"plan:{plano.id}", "name": "Perna"}]
     assert tools.list_plan_exercises(db, user, ctx, f"plan:{plano.id}")["exercises"] == [
         {"name": "Agachamento livre", "target_sets": 3},
     ]

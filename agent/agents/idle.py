@@ -11,6 +11,7 @@ from agent.shared import (
     IDLE_FEATURES,
     _fix_whatsapp_bold,
     arnaldo_header,
+    plans_with_ids,
     enter_planning,
     enter_session_setup,
     idle_menu,
@@ -30,11 +31,10 @@ _MAX_TOOL_ROUNDS = 3
 
 
 def _system_prompt(ctx) -> str:
-    plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     return (
         arnaldo_header("no menu principal.", IDLE_FEATURES)
         + f"Plano de assinatura do usuário: {ctx.limits.describe()}\n"
-        f"Planos de treino salvos do usuário: {plans_line}\n\n"
+        f"Planos de treino salvos do usuário, com os IDs entre colchetes: {plans_with_ids(ctx.plans)}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
         "- Pra se referir a um plano específico, use SEMPRE o plan_id exato oferecido pela "

@@ -21,6 +21,15 @@ MAX_EXERCISES_PER_CALL = 20
 _GENERIC_EXERCISE_NAMES = {"exercicio", "exercicios", "exercise", "exercises", "treino", "treinos", "plano", "serie", "series"}
 
 
+def _not_an_exercise(ex_name: str, draft_name: str, ctx: PlanningContext) -> bool:
+    """Nome que não é de exercício: genérico ("exercícios"), um treino/plano ("treino de Leg 2") ou o
+    nome do próprio plano ("Leg 2") — a LLM às vezes preenche o exercício com o que o usuário chamou de treino."""
+    norm = _norm(ex_name)
+    first_word = norm.split(" ", 1)[0]
+    plan_names = {_norm(draft_name)} | {_norm(p.name) for p in ctx.plans}
+    return norm in _GENERIC_EXERCISE_NAMES or first_word in {"treino", "plano"} or norm in plan_names
+
+
 def _norm(name: str) -> str:
     """Pra comparar nomes: sem acento, sem diferenciar maiúsculas, espaços colapsados."""
     no_accents = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
@@ -98,7 +107,7 @@ def add_to_draft(
         target = item.get("target_sets")
         if not ex_name:
             return {"ok": False, "error": f"Exercício {i}: nome vazio."}
-        if _norm(ex_name) in _GENERIC_EXERCISE_NAMES:
+        if _not_an_exercise(ex_name, draft["name"], ctx):
             return {
                 "ok": False,
                 "error": (
@@ -246,7 +255,7 @@ def discard_draft(db: Any, user: User, ctx: PlanningContext) -> dict:
 def list_plans(db: Any, user: User, ctx: PlanningContext) -> dict:
     if not ctx.plans:
         return {"ok": True, "plans": [], "note": "nenhum plano salvo ainda"}
-    return {"ok": True, "plans": [p.name for p in ctx.plans]}
+    return {"ok": True, "plans": [{"plan_id": f"plan:{p.id}", "name": p.name} for p in ctx.plans]}
 
 
 def list_plan_exercises(db: Any, user: User, ctx: PlanningContext, plan_id: str) -> dict:

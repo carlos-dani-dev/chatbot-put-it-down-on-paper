@@ -245,3 +245,32 @@ def test_adicionar_exercicios_no_plano_existente(db, user, push, gemini):
     assert estado == "idle"
     assert plan_repo.list_active_plan_names(db, user) == ["Push"]
     assert itens(db, push)[-1] == ("Crucifixo", 3)
+
+
+# ---------------------------------------------------------------- dois planos (o caso do print)
+
+def test_com_dois_planos_o_prompt_mostra_qual_id_e_de_qual_plano(db, user, make_pro, make_plan, gemini):
+    """Antes o prompt só tinha os nomes e as ferramentas só os IDs: com 'Peito' e 'Leg 2' salvos, a LLM
+    adivinhou plan:2 pra "remova o supino reto do treino de peito" e abriu o Leg 2."""
+    make_pro(user)
+    peito = make_plan("Peito", [("Supino reto", 4)])
+    leg = make_plan("Leg 2", [("Cadeira abdutora", 2)])
+    fake = gemini.script(
+        gemini.call("edit_plan", plan_id=f"plan:{peito.id}"),
+        gemini.text("Abri o *Peito*."),
+    )
+
+    agente.handle(db, user, "Remova o supino reto do treino de peito")
+
+    assert f"[plan:{peito.id}] Peito" in fake.system_prompt(0) and f"[plan:{leg.id}] Leg 2" in fake.system_prompt(0)
+    assert rascunho(user)["plan_id"] == peito.id
+
+
+@pytest.mark.parametrize("nome", ["treino de Leg 2", "Plano Peito", "Leg 2"])
+def test_nome_de_treino_ou_de_plano_nao_vira_exercicio(db, user, make_pro, make_plan, nome):
+    """No print, "Adicione o treino de Leg 2" virou um exercício chamado "treino de Leg 2"."""
+    make_pro(user)
+    make_plan("Peito", [("Supino reto", 4)])
+    r = tools.add_to_draft(db, user, ctx(db, user), [{"name": nome, "target_sets": 1}], name="Leg 2")
+
+    assert r["ok"] is False and "nunca invente" in r["error"]

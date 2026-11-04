@@ -30,7 +30,7 @@ def start_session(db: Any, user: User, ctx: IdleContext) -> dict:
 def list_plans(db: Any, user: User, ctx: IdleContext) -> dict:
     if not ctx.plans:
         return {"ok": True, "plans": [], "note": "nenhum plano salvo ainda"}
-    return {"ok": True, "plans": [p.name for p in ctx.plans]}
+    return {"ok": True, "plans": [{"plan_id": f"plan:{p.id}", "name": p.name} for p in ctx.plans]}
 
 
 def list_plan_exercises(db: Any, user: User, ctx: IdleContext, plan_id: str) -> dict:

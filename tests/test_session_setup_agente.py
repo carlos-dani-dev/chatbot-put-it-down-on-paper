@@ -64,7 +64,7 @@ def test_os_planos_salvos_aparecem_no_prompt(db, user, make_plan, gemini):
 
     agente.handle(db, user, "oi")
 
-    assert "Planos de treino salvos: Perna" in fake.system_prompt(0)
+    assert "Planos de treino salvos, com os IDs entre colchetes: [plan:1] Perna" in fake.system_prompt(0)
     assert "start_session_with_plan" in fake.offered_tools(0)
 
 

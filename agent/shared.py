@@ -80,6 +80,12 @@ ARNALDO_PERSONA = (
 )
 
 
+def plans_with_ids(plans) -> str:
+    """"[plan:1] Peito; [plan:2] Leg 2" — o nome junto do ID que as ferramentas pedem. Só com os
+    nomes, a LLM tinha que adivinhar qual plan:N era qual plano (e errava quando havia mais de um)."""
+    return "; ".join(f"[plan:{p.id}] {p.name}" for p in plans) or "nenhum"
+
+
 def arnaldo_features(where: str, features: list[tuple[str, str]]) -> str:
     """Onde o usuário está e o que ele pode fazer ali — a parte que muda de uma mensagem pra outra."""
     features_text = "\n".join(f"- *{name}*: {how}" for name, how in features)

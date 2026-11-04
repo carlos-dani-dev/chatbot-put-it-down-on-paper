@@ -22,7 +22,7 @@ def test_prompt_informa_o_plano_de_assinatura_e_os_planos(db, user, make_plan, g
 
     prompt = fake.system_prompt(0)
     assert "Plano de assinatura do usuário: Grátis" in prompt
-    assert "Planos de treino salvos do usuário: Perna" in prompt
+    assert "Planos de treino salvos do usuário, com os IDs entre colchetes: [plan:1] Perna" in prompt
 
 
 def test_comecar_treino_vai_pra_escolha_do_treino(db, user, make_plan, gemini):
@@ -149,7 +149,7 @@ def test_listar_planos_volta_o_resultado_pra_llm_responder(db, user, make_plan, 
 
     resposta, estado = agente.handle(db, user, "quais planos tenho?")
 
-    assert fake.tool_results(1)["list_plans"] == {"ok": True, "plans": ["Perna"]}
+    assert fake.tool_results(1)["list_plans"] == {"ok": True, "plans": [{"plan_id": "plan:1", "name": "Perna"}]}
     assert (resposta.text, estado) == ("Você tem o plano *Perna*.", "idle")
 
 

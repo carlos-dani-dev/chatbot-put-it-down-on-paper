@@ -15,8 +15,8 @@ from agent.tools import idle as tools
 
 def test_listar_planos(db, user, make_plan):
     assert tools.list_plans(db, user, build_context(db, user))["plans"] == []
-    make_plan("Perna")
-    assert tools.list_plans(db, user, build_context(db, user))["plans"] == ["Perna"]
+    plano = make_plan("Perna")
+    assert tools.list_plans(db, user, build_context(db, user))["plans"] == [{"plan_id": f"plan:{plano.id}", "name": "Perna"}]
 
 
 def test_exercicios_de_um_plano(db, user, make_plan):

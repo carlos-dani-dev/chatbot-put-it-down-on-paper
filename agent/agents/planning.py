@@ -7,7 +7,9 @@ from google.genai import types
 from agent import billing
 from agent.config import settings
 from agent.llm_usage import record_gemini
-from agent.shared import ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, enter_session_setup
+from agent.shared import (
+    ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, enter_session_setup, plans_with_ids,
+)
 from agent.schemas.replies import TextReply
 
 from ..tools import planning as tools_mod
@@ -21,7 +23,6 @@ _MAX_TOOL_ROUNDS = 4
 
 
 def _system_prompt(ctx) -> str:
-    plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     if ctx.draft:
         items = ", ".join(f"{i['name']} ({i['target_sets']}x)" for i in ctx.draft["items"])
         if ctx.draft.get("plan_id") is not None:
@@ -64,7 +65,7 @@ def _system_prompt(ctx) -> str:
     return (
         arnaldo_header("planejando planos de treino.", features)
         + f"Plano de assinatura do usuário: {ctx.limits.describe()}\n"
-        f"Planos salvos: {plans_line}\n"
+        f"Planos salvos, com os IDs entre colchetes: {plans_with_ids(ctx.plans)}\n"
         f"{draft_line}\n"
         f"{pending_line}\n\n"
         f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
