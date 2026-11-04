@@ -96,10 +96,60 @@ def test_usuario_inexistente_da_404(painel):
 
 
 def test_chamadas_filtradas_por_estado(painel, conversa):
-    pagina = painel.get("/chamadas?label=session")
+    pagina = painel.get("/chamadas?estado=session")
 
-    linhas = pagina.text.count("<tr class=\"border-t")
-    assert linhas == 1  # só a chamada "session", não a "session.closing" nem a "session_setup"
+    # "session" e o comentário "session.closing" contam no estado; "session_setup" é outro estado
+    assert pagina.text.count("<tr data-call") == 2
+    assert ">session_setup</a></td>" not in pagina.text.split("<tr data-call", 1)[1]
+
+
+def test_somas_e_medias_por_estado(db, conversa):
+    turno(db, conversa, AGORA + timedelta(minutes=1), "agachamento 100kg 5", "Anotado!", [("session", 2000, 30)])
+
+    r = queries.tokens_by_state(db, start=None)
+    session = next(x for x in r["rows"] if x["state"] == "session")
+
+    # chamadas: session 3000/40 + session.closing 3200/10 + session 2000/30
+    assert (session["calls"], session["prompt"], session["output"]) == (3, 8200, 80)
+    assert (session["avg_prompt"], session["avg_output"]) == (2733, 27)       # por chamada
+    assert session["messages"] == 4  # o usuário estava em "session" em todas as mensagens gravadas
+    assert (session["msg_prompt"], session["msg_output"]) == (2050, 20)       # por mensagem
+    assert r["total"]["prompt"] == 8200 + 1000 and r["total"]["output"] == 80 + 20
+
+
+def test_estado_sem_mensagens_nao_tem_media_por_mensagem(db, make_user):
+    novo = make_user(state="onboarding")
+    db.add(LlmCall(user_id=novo.id, label="onboarding", prompt_tokens=500, output_tokens=50, created_at=AGORA))
+    db.flush()
+
+    row = queries.tokens_by_state(db, start=None)["rows"][0]
+
+    assert row["avg_prompt"] == 500 and row["msg_prompt"] is None
+
+
+def test_medias_filtradas_por_usuario_e_periodo(db, conversa, make_user):
+    outro = make_user(state="session")
+    db.add(LlmCall(user_id=outro.id, label="session", prompt_tokens=99999, output_tokens=1, created_at=AGORA))
+    db.add(LlmCall(user_id=conversa.id, label="session", prompt_tokens=88888, output_tokens=1,
+                   created_at=AGORA - timedelta(days=40)))
+    db.flush()
+
+    so_ana = queries.tokens_by_state(db, start=queries.since(30), user_id=conversa.id)
+
+    assert so_ana["total"]["prompt"] == 1000 + 3000 + 3200  # sem o outro usuário nem a chamada de 40 dias atrás
+
+
+def test_pagina_de_chamadas_mostra_as_medias(painel, conversa):
+    pagina = painel.get(f"/chamadas?dias=7&usuario={conversa.id}")
+
+    assert pagina.status_code == 200
+    assert "Média por mensagem" in pagina.text
+    assert "6.200" in pagina.text  # soma de entrada do estado session: 3000 + 3200
+
+
+@pytest.mark.parametrize("dias", [1, 7, 30, 0])
+def test_chamadas_abre_em_todos_os_periodos(painel, conversa, dias):
+    assert painel.get(f"/chamadas?dias={dias}&estado=session").status_code == 200
 
 
 # ---------------------------------------------------------------- turnos
