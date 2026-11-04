@@ -246,3 +246,5 @@ class LlmCall(Base):
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)  # já inclui os tokens de raciocínio (cobrados como saída)
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 8))  # só quando a API informa (OpenRouter); o Gemini não
+    # quantos dos prompt_tokens vieram do cache do Gemini (cobrados ~10× mais barato). NULL = antes da coluna existir
+    cached_tokens: Mapped[int | None] = mapped_column(Integer)

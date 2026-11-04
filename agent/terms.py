@@ -13,7 +13,7 @@ from .models import User
 from .schemas.replies import ButtonsReply, MultiTextReply, TextReply
 from .shared import enter_idle
 
-TERMS_VERSION = "2026-11-02"
+TERMS_VERSION = "2026-11-04"
 TERMS_URL = "https://arnaldogymai.com/termos"
 PRIVACY_URL = "https://arnaldogymai.com/privacidade"
 

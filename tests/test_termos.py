@@ -183,7 +183,24 @@ def test_termos_mostram_os_limites_reais_dos_planos(site):
         "max_exercises": billing.FREE_MAX_EXERCISES_PER_PLAN,
         "daily_messages": billing.FREE_DAILY_MESSAGES,
     }
-    assert site.LEGAL_CONTEXT["pro"] == {"price": billing.format_brl(billing.PRO_PRICE), "days": billing.PRO_DAYS}
+    assert site.LEGAL_CONTEXT["pro"] == {
+        "price": billing.format_brl(billing.PRO_PRICE), "days": billing.PRO_DAYS,
+        "daily_messages": billing.PRO_DAILY_MESSAGES,
+    }
+
+
+def test_cards_de_planos_do_site_mostram_o_preco_e_os_limites_reais(site):
+    gratis, pro = site.CONTENT["plans"]
+    assert pro["price"] == billing.format_brl(billing.PRO_PRICE)
+    assert f"Até {billing.FREE_DAILY_MESSAGES} mensagens por dia" in gratis["items"]
+    assert f"Até {billing.PRO_DAILY_MESSAGES} mensagens por dia" in pro["items"]
+    assert "uso justo" in site.CONTENT["plans_note"]
+
+
+def test_termos_explicam_o_uso_justo(site):
+    texto = TestClient(site.app).get("/termos").text
+    assert "limite de uso justo" in texto
+    assert f"até {billing.PRO_DAILY_MESSAGES} mensagens por dia" in texto
 
 
 def test_campos_nao_preenchidos_aparecem_destacados(site, monkeypatch):

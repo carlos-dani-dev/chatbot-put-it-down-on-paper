@@ -60,7 +60,7 @@ def test_assinar_cria_um_pix(db, user, mercadopago):
     r = tools.assinar_pro(db, user, build_context(db, user))
 
     assert r["ok"] is True and r["reused"] is False
-    assert (r["amount"], r["days"], r["qr_code"]) == ("R$ 14,90", 30, "00020126PIXCOPIAECOLA1")
+    assert (r["amount"], r["days"], r["qr_code"]) == ("R$ 19,90", 30, "00020126PIXCOPIAECOLA1")
     [pedido] = mercadopago.created
     assert pedido["amount"] == billing.PRO_PRICE
     assert pedido["external_reference"] == f"user:{user.id}"

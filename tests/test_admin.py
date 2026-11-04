@@ -9,6 +9,7 @@ O admin/ fica fora do git (.gitignore): na sua máquina estes testes rodam; no G
 onde a pasta não existe, são pulados.
 """
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -143,8 +144,62 @@ def test_pagina_de_chamadas_mostra_as_medias(painel, conversa):
     pagina = painel.get(f"/chamadas?dias=7&usuario={conversa.id}")
 
     assert pagina.status_code == 200
-    assert "Média por mensagem" in pagina.text
-    assert "6.200" in pagina.text  # soma de entrada do estado session: 3000 + 3200
+    assert "Entrada / msg" in pagina.text
+    assert ">2.067<" in pagina.text  # entrada por mensagem em session: (3000 + 3200) ÷ 3 mensagens
+    assert "O Pro paga a conta?" not in pagina.text  # a conta do Pro é do produto todo, não de um usuário
+
+
+# ---------------------------------------------------------------- grátis por Pro
+
+def gasto(db, user, usd, quando=AGORA):
+    """Uma mensagem do usuário e uma chamada com custo em dólar já informado."""
+    db.add(ChatMessage(user_id=user.id, role="user", content="oi", state="idle", created_at=quando))
+    db.add(LlmCall(user_id=user.id, label="idle", prompt_tokens=1, output_tokens=1, cost_usd=Decimal(usd),
+                   created_at=quando))
+    db.flush()
+
+
+def test_gratis_por_pro_e_custo_por_pagante(db, make_user, make_pro):
+    from agent.models import Coupon, CouponRedemption
+
+    gratis = [make_user(), make_user(), make_user(), make_user()]
+    pagante = make_pro(make_user())
+    cortesia = make_user()
+    cupom = Coupon(code="PARCEIRO", days=90)
+    db.add(cupom)
+    db.flush()
+    db.add(CouponRedemption(coupon_id=cupom.id, user_id=cortesia.id, redeemed_at=AGORA))
+    for u in gratis:
+        gasto(db, u, "0.10")
+    gasto(db, pagante, "0.30")
+    gasto(db, cortesia, "0.20")
+    make_user()  # cadastrado mas sem mensagem no período: não conta como ativo
+
+    e = queries.pro_economics(db, days=30)  # 30 dias: a projeção mensal é o próprio período
+
+    assert (e["free"], e["paying"], e["courtesy"]) == (4, 1, 1)
+    assert e["free_per_pro"] == 4
+    rate = queries.USD_BRL
+    assert e["avg_free"] == Decimal("0.10") * rate
+    assert e["avg_pro"] == Decimal("0.25") * rate                  # pagante e cortesia
+    assert e["per_paying"] == Decimal("0.90") * rate               # tudo (0,40 + 0,30 + 0,20) ÷ 1 pagante
+    assert e["price_share"] == e["per_paying"] / e["price"]
+
+
+def test_periodo_curto_e_projetado_pra_30_dias(db, make_user, make_pro):
+    gasto(db, make_pro(make_user()), "0.10")
+    e = queries.pro_economics(db, days=1)
+    assert e["per_paying"] == Decimal("0.10") * 30 * queries.USD_BRL
+
+
+def test_sem_pro_pagante(db, make_user, painel):
+    gasto(db, make_user(), "0.10")
+
+    e = queries.pro_economics(db, days=7)
+    pagina = painel.get("/chamadas?dias=7")
+
+    assert e["free_per_pro"] is None and e["per_paying"] is None
+    assert "sem Pro pagante" in pagina.text
 
 
 @pytest.mark.parametrize("dias", [1, 7, 30, 0])
@@ -213,3 +268,23 @@ def test_banco_do_painel_recusa_escrita(tmp_path):
         assert conn.execute(text("SELECT count(*) FROM t")).scalar() == 0  # ler pode
         with pytest.raises(OperationalError, match="readonly"):
             conn.execute(text("INSERT INTO t VALUES (1)"))  # escrever não
+
+
+# ---------------------------------------------------------------- cache
+
+def test_custo_estimado_cobra_o_cache_mais_barato():
+    sem_cache = queries.estimated_cost(1_000_000, 0)
+    metade_em_cache = queries.estimated_cost(1_000_000, 0, cached=500_000)
+    assert sem_cache == queries.PRICE_PER_MTOK["prompt"]
+    assert metade_em_cache == (queries.PRICE_PER_MTOK["prompt"] + queries.PRICE_PER_MTOK["cached"]) / 2
+
+
+def test_parte_da_entrada_que_veio_do_cache_por_estado(db, make_user):
+    ana = make_user(state="session")
+    db.add(LlmCall(user_id=ana.id, label="session", prompt_tokens=2000, output_tokens=10, cached_tokens=1500, created_at=AGORA))
+    db.add(LlmCall(user_id=ana.id, label="session", prompt_tokens=2000, output_tokens=10, cached_tokens=None, created_at=AGORA))
+    db.flush()
+
+    [session] = queries.tokens_by_state(db, start=None)["rows"]
+
+    assert session["cached"] == 1500 and session["cache_share"] == 1500 / 4000

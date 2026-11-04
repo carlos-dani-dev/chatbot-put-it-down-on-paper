@@ -47,7 +47,7 @@ def _save(phone: str, rows: list[dict]) -> None:
 
 
 def _add(label: str, model: str | None, prompt: int, output: int, total: int, extra: str = "",
-         cost: float | None = None) -> None:
+         cost: float | None = None, cached: int | None = None) -> None:
     turn = _turn.get()
     phone = turn["phone"] if turn else "-"
     logger.info(
@@ -60,7 +60,7 @@ def _add(label: str, model: str | None, prompt: int, output: int, total: int, ex
         turn["output"] += output
         turn["total"] += total
         turn["rows"].append({"label": label, "model": model, "prompt_tokens": prompt,
-                             "output_tokens": output, "cost_usd": cost})
+                             "output_tokens": output, "cost_usd": cost, "cached_tokens": cached})
 
 
 def record_gemini(label: str, response) -> None:
@@ -71,9 +71,11 @@ def record_gemini(label: str, response) -> None:
     prompt = usage.prompt_token_count or 0
     output = usage.candidates_token_count or 0
     thoughts = usage.thoughts_token_count or 0
+    # parte do prompt que veio do cache implícito do Gemini (já incluída em `prompt`, cobrada ~10× mais barato)
+    cached = usage.cached_content_token_count or 0
     total = usage.total_token_count or (prompt + output + thoughts)
-    extra = f" thoughts={thoughts}" if thoughts else ""
-    _add(label, getattr(response, "model_version", None), prompt, output + thoughts, total, extra)
+    extra = (f" thoughts={thoughts}" if thoughts else "") + (f" cached={cached}" if cached else "")
+    _add(label, getattr(response, "model_version", None), prompt, output + thoughts, total, extra, cached=cached)
 
 
 def record_openrouter(label: str, model: str, usage: dict | None) -> None:

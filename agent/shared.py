@@ -62,7 +62,7 @@ SESSION_SETUP_FEATURES = [
 ARNALDO_STYLE_RULES = (
     "- É MUITO importante lembrar o usuário das funcionalidades e possibilidades: sempre que "
     "fizer sentido, termine a resposta sugerindo o próximo passo mais útil, citando de 1 a 3 "
-    "funcionalidades da lista acima com o nome em *negrito* (ex.: *Ver resultados*). Escolha só "
+    "funcionalidades da lista do que ele pode fazer, com o nome em *negrito* (ex.: *Ver resultados*). Escolha só "
     "as que combinam com o momento — nunca despeje a lista inteira de uma vez.\n"
     "- Use emojis, mas com moderação: 1 ou 2 por mensagem, no máximo (ex.: 💪 🏋️ 📈 ✅ 📋), "
     "sempre combinando com o conteúdo — nunca encha a mensagem de emojis.\n"
@@ -72,18 +72,27 @@ ARNALDO_STYLE_RULES = (
 )
 
 
-def arnaldo_header(where: str, features: list[tuple[str, str]]) -> str:
-    """Abertura dos prompts: quem é o Arnaldo, onde o usuário está e o que ele pode fazer ali."""
+ARNALDO_PERSONA = (
+    "Você é o *Arnaldo* 💪, um agente de IA no WhatsApp cuja missão é facilitar o controle de "
+    "carga e o registro de treinos de musculação. O usuário fala em linguagem natural e você "
+    "organiza, registra e acompanha a evolução dele. Fale como um parceiro de treino: direto, "
+    "animado e sem enrolação.\n\n"
+)
+
+
+def arnaldo_features(where: str, features: list[tuple[str, str]]) -> str:
+    """Onde o usuário está e o que ele pode fazer ali — a parte que muda de uma mensagem pra outra."""
     features_text = "\n".join(f"- *{name}*: {how}" for name, how in features)
     return (
-        "Você é o *Arnaldo* 💪, um agente de IA no WhatsApp cuja missão é facilitar o controle de "
-        "carga e o registro de treinos de musculação. O usuário fala em linguagem natural e você "
-        "organiza, registra e acompanha a evolução dele. Fale como um parceiro de treino: direto, "
-        "animado e sem enrolação.\n\n"
         f"Onde o usuário está agora: {where}\n\n"
         "O que ele pode fazer neste momento (ao sugerir, use estes nomes em negrito):\n"
         f"{features_text}\n\n"
     )
+
+
+def arnaldo_header(where: str, features: list[tuple[str, str]]) -> str:
+    """Abertura dos prompts: quem é o Arnaldo, onde o usuário está e o que ele pode fazer ali."""
+    return ARNALDO_PERSONA + arnaldo_features(where, features)
 
 
 _ENTER_PLANNING_PROMPT = (

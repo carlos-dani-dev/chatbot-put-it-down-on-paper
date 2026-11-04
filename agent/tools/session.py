@@ -146,6 +146,21 @@ def format_log_sets_fact(result: dict) -> str:
     return line
 
 
+_KEEP_GOING = ("Bora pra próxima série! 💪", "Boa! Manda a próxima. 💪", "Isso aí, segue o baile! 🏋️")
+
+
+def log_sets_reaction(result: dict) -> str:
+    """Comentário depois de um registro que deu certo, montado em código a partir da situação da
+    meta — sem uma 2ª chamada à LLM só pra escrever uma frase curta (era metade do custo do treino).
+    Varia pelo número de séries feitas, pra não repetir a mesma frase a cada mensagem."""
+    if result.get("all_targets_reached"):
+        return "Quando quiser, é só mandar *Finalizar treino*. 🏁"
+    if result.get("target_reached"):
+        next_exercise = result.get("next_pending_exercise")
+        return f"Bora pro *{next_exercise}*! 💪" if next_exercise else "Manda o próximo exercício! 💪"
+    return _KEEP_GOING[result["total_done"] % len(_KEEP_GOING)]
+
+
 def request_delete_sets(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext, set_ids: list[str]) -> dict:
     valid_ids, bad = ctx.find_set_ids(set_ids)
     if not valid_ids:
@@ -317,7 +332,7 @@ def build_declarations(ctx: SessionContext) -> list[types.FunctionDeclaration]:
                 properties={
                     "set_ids": types.Schema(
                         type="ARRAY",
-                        items=types.Schema(type="STRING", enum=ctx.set_ids()),
+                        items=types.Schema(type="STRING", enum=[f"set:{st.id}" for st in ctx.recent_sets()]),
                     ),
                 },
                 required=["set_ids"],

@@ -27,6 +27,11 @@ class SetInfo:
     set_number: int
 
 
+# quantas séries entram no prompt (e na lista de séries que dá pra apagar). Só as últimas: o
+# prompt vai em toda chamada, e listar o treino inteiro faria ele crescer a cada série
+RECENT_SETS_SHOWN = 6
+
+
 @dataclass
 class SessionContext:
     ws: WorkoutSession
@@ -41,6 +46,9 @@ class SessionContext:
 
     def set_ids(self) -> list[str]:
         return [f"set:{s.id}" for s in self.sets]
+
+    def recent_sets(self) -> list[SetInfo]:
+        return self.sets[-RECENT_SETS_SHOWN:]
 
     def find_exercise(self, enum_value: str | None) -> ExerciseInfo | None:
         if not enum_value or not enum_value.startswith("ex:"):

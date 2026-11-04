@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from agent import billing
-from agent.billing import FREE_DAILY_MESSAGES, daily_limit_intercept
+from agent.billing import FREE_DAILY_MESSAGES, PRO_DAILY_MESSAGES, daily_limit_intercept
 from agent.models import ChatMessage
 from agent.schemas.replies import TextReply
 
@@ -84,11 +84,44 @@ def test_aviso_de_ontem_nao_silencia_hoje(db, user, mensagens):
     assert isinstance(reply, TextReply)
 
 
-def test_pro_nao_tem_limite(db, user, make_pro, mensagens):
+def test_pro_passa_do_limite_do_gratis(db, user, make_pro, mensagens):
     make_pro(user)
     mensagens(user, FREE_DAILY_MESSAGES * 3)
 
     assert daily_limit_intercept(db, user) is None
+
+
+def test_pro_ate_o_limite_de_uso_justo_ainda_passa(db, user, make_pro, mensagens):
+    make_pro(user)
+    mensagens(user, PRO_DAILY_MESSAGES)
+
+    assert daily_limit_intercept(db, user) is None
+
+
+def test_pro_acima_do_uso_justo_recebe_o_aviso_proprio(db, make_user, make_pro, mensagens):
+    pro = make_pro(make_user(state="session"))
+    mensagens(pro, PRO_DAILY_MESSAGES + 1)
+
+    reply, estado = daily_limit_intercept(db, pro)
+
+    assert f"{PRO_DAILY_MESSAGES} mensagens de hoje" in reply.text and "uso justo do *Pro*" in reply.text
+    assert "/pro" not in reply.text  # já é Pro: não oferece assinar
+    assert estado == "session"
+
+
+def test_pro_avisado_fica_em_silencio(db, user, make_pro, mensagens):
+    make_pro(user)
+    mensagens(user, PRO_DAILY_MESSAGES + 1)
+    avisar(db, user)
+    mensagens(user, 1)
+
+    assert daily_limit_intercept(db, user) == (None, user.state)
+
+
+def test_aviso_do_gratis_mostra_o_limite_do_pro(db, user, mensagens):
+    mensagens(user, FREE_DAILY_MESSAGES + 1)
+    reply, _ = daily_limit_intercept(db, user)
+    assert f"até {PRO_DAILY_MESSAGES} por dia" in reply.text and "*/pro*" in reply.text
 
 
 def test_mensagens_de_ontem_nao_contam(db, user, mensagens):

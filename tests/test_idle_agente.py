@@ -121,7 +121,7 @@ def test_assinar_manda_o_copia_e_cola_sozinho_na_segunda_mensagem(db, user, gemi
     assert estado == "idle"
     assert isinstance(resposta, MultiTextReply)
     explicacao, codigo = resposta.texts
-    assert "*Plano Pro*: R$ 14,90 por 30 dias" in explicacao
+    assert "*Plano Pro*: R$ 19,90 por 30 dias" in explicacao
     assert codigo == "00020126PIXCOPIAECOLA1"  # sozinho, pra o usuário copiar com um toque
 
 

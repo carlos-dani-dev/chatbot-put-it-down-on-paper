@@ -33,14 +33,14 @@ def _capturar_log(caplog, llm_calls_db):
     llm_usage._turn.set(None)  # nenhum teste deixa um acumulador aberto pro próximo
 
 
-def gemini_response(prompt=None, output=None, thoughts=None, total=None, model="gemini-flash-lite-latest"):
+def gemini_response(prompt=None, output=None, thoughts=None, total=None, model="gemini-flash-lite-latest", cached=None):
     """Uma resposta do Gemini só com a contagem de tokens (é só o que o llm_usage lê)."""
     return types.GenerateContentResponse(
         candidates=[],
         model_version=model,
         usage_metadata=types.GenerateContentResponseUsageMetadata(
             prompt_token_count=prompt, candidates_token_count=output,
-            thoughts_token_count=thoughts, total_token_count=total,
+            thoughts_token_count=thoughts, total_token_count=total, cached_content_token_count=cached,
         ),
     )
 
@@ -209,25 +209,39 @@ def test_mensagens_simultaneas_nao_misturam_os_totais(caplog):
 # ---------------------------------------------------------------- de ponta a ponta, com o agente
 
 def test_mensagem_real_da_sessao_soma_as_duas_chamadas_do_agente(caplog, db, user, start_workout, make_plan,
-                                                                 gemini, exercise_id):
-    """Uma mensagem 'agachamento 60kg 10' passa por 2 chamadas ao Gemini (escolher a ferramenta e
-    escrever o comentário). O total da mensagem tem que somar as duas — é o que o usuário custou."""
-    ws = start_workout(make_plan("Perna", [("Agachamento livre", 2)]))
-    escolher = gemini.call("log_sets", exercise_id=exercise_id(build_context(db, user, ws), "Agachamento livre"),
-                           sets=[{"weight_kg": 60, "reps": 10}])
-    comentar = gemini.text("Boa!")
+                                                                 gemini):
+    """Uma pergunta como 'quais faltam?' passa por 2 chamadas ao Gemini (escolher a ferramenta e
+    escrever a resposta). O total da mensagem tem que somar as duas — é o que o usuário custou."""
+    start_workout(make_plan("Perna", [("Agachamento livre", 2)]))
+    escolher = gemini.call("list_exercises")
+    responder = gemini.text("Falta o agachamento!")
     escolher.usage_metadata = gemini_response(prompt=1500, output=40, total=1540).usage_metadata
-    comentar.usage_metadata = gemini_response(prompt=1700, output=8, total=1708).usage_metadata
-    gemini.script(escolher, comentar)
+    responder.usage_metadata = gemini_response(prompt=1700, output=8, total=1708).usage_metadata
+    gemini.script(escolher, responder)
 
     llm_usage.start_turn(user.phone_number)          # o app.py faz isso ao receber a mensagem
-    session_agent.handle(db, user, "agachamento 60kg 10 reps")
+    session_agent.handle(db, user, "quais faltam?")
     llm_usage.end_turn()
 
     assert [c["call"] for c in linhas(caplog, "call")] == ["session", "session"]
     assert total_da_mensagem(caplog) == {"calls": 2, "prompt": 3200, "output": 48, "total": 3248}
     # model None: as respostas do Gemini falso só ganharam a contagem de tokens, não o model_version
     assert gravadas(db) == [(user.id, "session", None, 1500, 40, None), (user.id, "session", None, 1700, 8, None)]
+
+
+def test_registrar_uma_serie_custa_uma_chamada_so(caplog, db, user, start_workout, make_plan, gemini, exercise_id):
+    """O registro de série (a mensagem mais comum do treino) não tem mais a 2ª chamada só pro comentário."""
+    ws = start_workout(make_plan("Perna", [("Agachamento livre", 2)]))
+    escolher = gemini.call("log_sets", exercise_id=exercise_id(build_context(db, user, ws), "Agachamento livre"),
+                           sets=[{"weight_kg": 60, "reps": 10}])
+    escolher.usage_metadata = gemini_response(prompt=1500, output=40, total=1540).usage_metadata
+    gemini.script(escolher)
+
+    llm_usage.start_turn(user.phone_number)
+    session_agent.handle(db, user, "agachamento 60kg 10 reps")
+    llm_usage.end_turn()
+
+    assert total_da_mensagem(caplog) == {"calls": 1, "prompt": 1500, "output": 40, "total": 1540}
 
 
 # ---------------------------------------------------------------- a gravação na tabela llm_calls
@@ -291,3 +305,16 @@ def test_falha_ao_gravar_nao_quebra_a_mensagem(caplog, monkeypatch, user):
     assert "falha ao gravar o consumo" in caplog.text
     assert total_da_mensagem(caplog)["total"] == 912  # o log continua lá
     assert llm_usage._turn.get() is None  # e o acumulador fechou
+
+
+# ---------------------------------------------------------------- cache do Gemini
+
+def test_tokens_do_cache_sao_logados_e_gravados(caplog, llm_calls_db, user):
+    llm_usage.start_turn(user.phone_number)
+    llm_usage.record_gemini("session", gemini_response(prompt=2000, output=30, total=2030, cached=1500))
+    llm_usage.record_gemini("session", gemini_response(prompt=2000, output=30, total=2030))
+    llm_usage.end_turn()
+
+    primeira, segunda = linhas(caplog, "call")
+    assert primeira["cached"] == "1500" and "cached" not in segunda  # só aparece no log quando houve cache
+    assert [c.cached_tokens for c in llm_calls_db.scalars(select(LlmCall).order_by(LlmCall.id))] == [1500, 0]

@@ -20,7 +20,7 @@ from .schemas.replies import MultiTextReply, TextReply
 
 logger = logging.getLogger("agent.billing")
 
-PRO_PRICE = Decimal("14.90")
+PRO_PRICE = Decimal("19.90")
 PRO_DAYS = 30
 CHARGE_TTL = timedelta(minutes=60)
 LOCAL_TZ = ZoneInfo("America/Sao_Paulo")
@@ -257,9 +257,11 @@ def redeem_coupon_reply(db: Any, user: User, code: str) -> TextReply:
 # --------------------------------------------------------------------------
 FREE_MAX_PLANS = 1
 FREE_MAX_EXERCISES_PER_PLAN = 5
-# mensagens por dia (zera à meia-noite de Brasília). Precisa caber um dia de treino com folga:
-# confira o maior dia real no painel/Supabase antes de baixar
-FREE_DAILY_MESSAGES = 60
+# limite de uso justo: mensagens por dia (zera à meia-noite de Brasília). O site e os Termos mostram
+# estes números (site/app.py, um teste confere). O do Grátis precisa caber um dia de treino: confira
+# o maior dia real no painel/Supabase antes de baixar
+FREE_DAILY_MESSAGES = 25
+PRO_DAILY_MESSAGES = 250
 
 
 @dataclass
@@ -378,15 +380,24 @@ def _warned_today(db: Any, user: User) -> bool:
 
 def daily_limit_intercept(db: Any, user: User) -> tuple[TextReply | None, str] | None:
     """None: segue normal. (aviso, estado): passou do limite, avisa uma vez por dia.
-    (None, estado): já foi avisado hoje — não responde nada, pra quem insiste não render resposta."""
+    (None, estado): já foi avisado hoje — não responde nada, pra quem insiste não render resposta.
+
+    O Pro também tem limite (uso justo), bem acima de qualquer dia de treino: só barra abuso."""
     count = user_messages_today(db, user)
-    if count <= FREE_DAILY_MESSAGES or active_pro_until(db, user) is not None:
+    if count <= FREE_DAILY_MESSAGES:
+        return None  # abaixo do menor limite: nem precisa olhar se é Pro
+    is_pro = active_pro_until(db, user) is not None
+    if count <= (PRO_DAILY_MESSAGES if is_pro else FREE_DAILY_MESSAGES):
         return None
-    if not _warned_today(db, user):
-        logger.info("billing: limite diário atingido user=%s", user.phone_number)
-        return TextReply(
-            f"{_LIMIT_WARNING_PREFIX} {FREE_DAILY_MESSAGES} mensagens de hoje do plano *Grátis*. "
-            "À meia-noite libera de novo.\n\n"
-            "Pra usar sem limite, é só mandar */pro*."
-        ), user.state
-    return None, user.state
+    if _warned_today(db, user):
+        return None, user.state
+
+    logger.info("billing: limite diário atingido user=%s pro=%s", user.phone_number, is_pro)
+    if is_pro:
+        text = (f"{_LIMIT_WARNING_PREFIX} {PRO_DAILY_MESSAGES} mensagens de hoje, o limite de uso justo do *Pro*. "
+                "À meia-noite libera de novo. 💪")
+    else:
+        text = (f"{_LIMIT_WARNING_PREFIX} {FREE_DAILY_MESSAGES} mensagens de hoje do plano *Grátis*. "
+                "À meia-noite libera de novo.\n\n"
+                f"Com o *Pro* são até {PRO_DAILY_MESSAGES} por dia: é só mandar */pro*.")
+    return TextReply(text), user.state

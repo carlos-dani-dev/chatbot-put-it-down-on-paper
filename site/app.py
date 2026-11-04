@@ -22,6 +22,11 @@ WHATSAPP_NUMBER = "558688286852"
 # que o bot reconhece em qualquer momento da conversa (ver agent/commands.py)
 PRO_MESSAGE = "/pro"
 
+# preço e limites de uso justo, os mesmos de agent/billing.py (um teste confere)
+PRO_PRICE = "R$ 19,90"
+FREE_DAILY_MESSAGES = 25
+PRO_DAILY_MESSAGES = 250
+
 CONTENT = {
     "whatsapp_url": f"https://wa.me/{WHATSAPP_NUMBER}",
     "stats": [
@@ -55,7 +60,8 @@ CONTENT = {
             "price": "R$ 0",
             "period": "",
             "items": [
-                "Registro ilimitado de treinos",
+                "Registro de treinos por mensagem",
+                f"Até {FREE_DAILY_MESSAGES} mensagens por dia",
                 "1 plano com até 5 exercícios",
                 "Página de resultados e recordes",
             ],
@@ -64,13 +70,19 @@ CONTENT = {
         },
         {
             "name": "Pro",
-            "price": "R$ 14,90",
+            "price": PRO_PRICE,
             "period": "/mês",
-            "items": ["Tudo do plano Grátis", "Planos de treino ilimitados", "Exercícios ilimitados por plano"],
+            "items": [
+                "Tudo do plano Grátis",
+                f"Até {PRO_DAILY_MESSAGES} mensagens por dia",
+                "Planos de treino ilimitados",
+                "Exercícios ilimitados por plano",
+            ],
             "highlight": True,
             "cta_url": f"https://wa.me/{WHATSAPP_NUMBER}?text={quote(PRO_MESSAGE)}",
         },
     ],
+    "plans_note": "Mensagens por dia são um limite de uso justo e zeram à meia-noite (horário de Brasília).",
     "socials": [
         {"name": "Instagram", "url": "https://instagram.com/arnaldo.gym.ai"},
         {"name": "TikTok", "url": "https://tiktok.com/@arnaldo.gym.ai"},
@@ -80,8 +92,8 @@ CONTENT = {
 
 # Termos de Uso e Política de Privacidade (/termos e /privacidade). A versão é a mesma de
 # agent/terms.py: mudou o texto, suba as duas e o bot pede o aceite de novo (um teste confere)
-TERMS_VERSION = "2026-11-02"
-TERMS_UPDATED = "2 de novembro de 2026"
+TERMS_VERSION = "2026-11-04"
+TERMS_UPDATED = "4 de novembro de 2026"
 # quem responde pelo serviço — vazio aparece destacado nas páginas como "[preencher: ...]"
 LEGAL = {"owner": "Arnaldo Gym AI", "document": "69.915.314/0001-10", "contact_email": "arnaldo.gym.ai@gmail.com"}
 LEGAL_CONTEXT = {
@@ -89,8 +101,8 @@ LEGAL_CONTEXT = {
     "terms_updated": TERMS_UPDATED,
     "legal": LEGAL,
     # mesmos limites de agent/billing.py
-    "free": {"max_plans": 1, "max_exercises": 5, "daily_messages": 60},
-    "pro": {"price": "R$ 14,90", "days": 30},
+    "free": {"max_plans": 1, "max_exercises": 5, "daily_messages": FREE_DAILY_MESSAGES},
+    "pro": {"price": PRO_PRICE, "days": 30, "daily_messages": PRO_DAILY_MESSAGES},
 }
 
 app = FastAPI(title="Arnaldo.gym.ai", docs_url=None, redoc_url=None)

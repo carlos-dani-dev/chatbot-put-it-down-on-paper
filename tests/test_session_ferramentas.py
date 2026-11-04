@@ -3,6 +3,8 @@ desempenho anterior — e quais ferramentas são oferecidas à LLM em cada situa
 """
 from datetime import datetime
 
+import pytest
+
 from sqlalchemy import select
 
 from agent.context.session import build_context
@@ -206,3 +208,25 @@ def test_ids_oferecidos_sao_exatamente_os_da_sessao(db, user, start_workout, mak
 
     assert decls["log_sets"].parameters.properties["exercise_id"].enum == ctx.exercise_ids() + ["new"]
     assert decls["request_delete_sets"].parameters.properties["set_ids"].items.enum == ctx.set_ids()
+
+
+# ---------------------------------------------------------------- comentário montado em código
+
+@pytest.mark.parametrize("resultado,esperado", [
+    ({"total_done": 1, "target_sets": 3, "target_reached": False}, "Boa! Manda a próxima. 💪"),
+    ({"total_done": 3, "target_sets": 3, "target_reached": True, "next_pending_exercise": "Crucifixo"},
+     "Bora pro *Crucifixo*! 💪"),
+    ({"total_done": 3, "target_sets": 3, "target_reached": True, "next_pending_exercise": None},
+     "Manda o próximo exercício! 💪"),
+    ({"total_done": 3, "target_sets": 3, "target_reached": True, "all_targets_reached": True},
+     "Quando quiser, é só mandar *Finalizar treino*. 🏁"),
+    ({"total_done": 2, "target_sets": None}, "Isso aí, segue o baile! 🏋️"),  # treino livre: não fala em meta
+])
+def test_comentario_depois_do_registro(resultado, esperado):
+    assert tools.log_sets_reaction(resultado) == esperado
+
+
+def test_comentario_nunca_fala_em_meta_quando_ela_nao_foi_batida():
+    for feitas in range(1, 10):
+        texto = tools.log_sets_reaction({"total_done": feitas, "target_sets": 10, "target_reached": False})
+        assert "meta" not in texto.lower() and "Finalizar" not in texto
