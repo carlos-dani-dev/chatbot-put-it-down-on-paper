@@ -114,8 +114,9 @@ def build_declarations(ctx: IdleContext) -> list[types.FunctionDeclaration]:
         decls.append(types.FunctionDeclaration(
             name="manage_plans",
             description=(
-                "O usuário quer editar, excluir ou gerenciar de algum jeito um plano de treino "
-                "que JÁ EXISTE (ex.: 'exclua o plano de peito') — não é pra criar um plano novo."
+                "O usuário quer editar (adicionar/tirar exercícios, mudar séries), excluir ou gerenciar "
+                "de algum jeito um plano de treino que JÁ EXISTE (ex.: 'exclua o plano de peito', "
+                "'adiciona crucifixo no Push') — não é pra criar um plano novo."
             ),
             parameters=types.Schema(type="OBJECT", properties={}),
         ))

@@ -63,3 +63,32 @@ def save_plan(db: Any, user: User, draft: dict) -> Plan:
 
     db.flush()  # grava os exercícios já: uma consulta na mesma transação veria o plano vazio
     return plan
+
+
+def update_plan(db: Any, plan: Plan, draft: dict) -> Plan:
+    """Grava a edição no MESMO plano (o histórico de treinos continua ligado a ele).
+
+    Os itens que continuam no plano são atualizados no lugar, em vez de apagados e recriados:
+    cada série registrada aponta pro item (plan_exercise_id), e apagar o item soltaria essas séries.
+    Só o item de um exercício removido é apagado — as séries dele ficam, sem o vínculo com o plano.
+    """
+    current = {pe.exercise_id: pe for pe, _ex in get_plan_exercises(db, plan.id)}
+    kept: set[int] = set()
+
+    for position, item in enumerate(draft["items"]):
+        exercise, _ = exercise_repo.find_or_create(db, item["name"])
+        pe = current.get(exercise.id)
+        if pe is not None and exercise.id not in kept:
+            pe.position = position
+            pe.target_sets = item["target_sets"]
+        else:
+            db.add(PlanExercise(plan_id=plan.id, exercise_id=exercise.id, position=position,
+                                target_sets=item["target_sets"]))
+        kept.add(exercise.id)
+
+    for exercise_id, pe in current.items():
+        if exercise_id not in kept:
+            db.delete(pe)
+
+    db.flush()
+    return plan

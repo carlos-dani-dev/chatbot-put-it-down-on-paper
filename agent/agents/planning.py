@@ -24,7 +24,11 @@ def _system_prompt(ctx) -> str:
     plans_line = ", ".join(p.name for p in ctx.plans) or "nenhum"
     if ctx.draft:
         items = ", ".join(f"{i['name']} ({i['target_sets']}x)" for i in ctx.draft["items"])
-        draft_line = f"Rascunho em andamento: '{ctx.draft['name']}' — exercícios: {items or 'nenhum ainda'}."
+        if ctx.draft.get("plan_id") is not None:
+            draft_line = (f"Editando o plano salvo '{ctx.draft['name']}' (mudanças ainda não salvas) — "
+                          f"exercícios: {items or 'nenhum'}.")
+        else:
+            draft_line = f"Rascunho em andamento: '{ctx.draft['name']}' — exercícios: {items or 'nenhum ainda'}."
     else:
         draft_line = "Nenhum rascunho em andamento."
 
@@ -36,6 +40,8 @@ def _system_prompt(ctx) -> str:
     if ctx.draft:
         features = [
             ("Adicionar exercícios", "mandar mais exercícios com a quantidade de séries pra entrar no plano"),
+            ("Remover um exercício", "tirar um exercício do plano"),
+            ("Mudar as séries", "trocar a quantidade de séries de um exercício"),
             ("Salvar o plano", "guardar o plano de vez pra usar nos treinos"),
             ("Descartar o plano", "jogar fora o rascunho sem salvar"),
         ]
@@ -43,6 +49,8 @@ def _system_prompt(ctx) -> str:
         features = [
             ("Criar um plano", "mandar o nome do plano e os exercícios com a quantidade de séries (ex.: Peito: supino 3 séries)"),
         ]
+    if ctx.plans and not ctx.draft:
+        features.append(("Editar um plano", "adicionar ou tirar exercícios e mudar séries de um plano salvo"))
     if ctx.plans:
         features += [
             ("Ver meus planos", "listar os planos salvos"),
@@ -66,6 +74,11 @@ def _system_prompt(ctx) -> str:
         "- Se o usuário descrever um plano novo ou mais exercícios, chame add_to_draft — é "
         "fundamental sempre ter nome do plano e exercícios com quantidade de séries antes "
         "de poder salvar.\n"
+        "- Se ele quer mudar um plano JÁ SALVO (adicionar ou tirar exercícios, mudar séries), chame "
+        "edit_plan com o plan_id desse plano — nunca crie um plano novo com o nome de um que já existe. "
+        "Depois de abrir, mostre os exercícios atuais e pergunte o que ele quer mudar.\n"
+        "- NUNCA invente exercícios: só passe pra add_to_draft exercícios que o usuário nomeou. Se ele "
+        "disse que quer adicionar exercícios sem dizer quais, pergunte quais e com quantas séries.\n"
         "- O nome de cada exercício em add_to_draft deve ser EXATAMENTE o que o usuário "
         "escreveu (copie as palavras literais da mensagem dele) — nunca troque por um sinônimo "
         "ou variação parecida (ex.: se ele disse 'barra', nunca escreva 'halteres'; se disse "
@@ -81,8 +94,8 @@ def _system_prompt(ctx) -> str:
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou de verdade.\n"
         "- NUNCA mencione o identificador técnico (como 'plan:1') na resposta final — fale sempre "
         "só pelo nome.\n"
-        "- Depois de adicionar exercícios, mostre como o plano está e lembre que ele pode "
-        "*Adicionar exercícios* ou *Salvar o plano*. Depois de salvar, lembre que ele pode "
+        "- Depois de adicionar, tirar ou mudar exercícios, mostre como o plano está e lembre que ele pode "
+        "*Adicionar exercícios*, *Remover um exercício* ou *Salvar o plano*. Depois de salvar, lembre que ele pode "
         "*Começar um treino* com ele.\n"
         "- Se uma ferramenta recusar com limit_reached (limite do plano Grátis), explique o limite com os números que vieram no erro, deixe claro que nada foi adicionado/criado, e ofereça as saídas: ajustar o pedido pra caber, *Excluir um plano* (só se o limite for de planos e ele já tiver plano salvo) ou *Assinar o Pro*. Se ele quiser assinar, chame assinar_pro.\n"
         "- Se não for nada disso (ex.: dúvida genérica), responda direto em texto.\n"

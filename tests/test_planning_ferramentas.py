@@ -235,6 +235,7 @@ def test_com_rascunho_planos_e_pendente(db, user, make_plan, make_pro):
                        "pending_action": {"type": "delete_plan", "plan_id": 1, "plan_name": "Perna"}}
 
     assert nomes(db, user) == [
-        "add_to_draft", "list_plans", "save_draft", "discard_draft", "list_plan_exercises",
-        "request_delete_plan", "confirm_pending_action", "cancel_pending_action", "go_to_session",
-    ]  # Pro: sem assinar_pro
+        "add_to_draft", "list_plans", "remove_from_draft", "set_sets", "save_draft", "discard_draft",
+        "list_plan_exercises", "request_delete_plan", "confirm_pending_action", "cancel_pending_action",
+        "go_to_session",
+    ]  # Pro: sem assinar_pro; com plano aberto: sem edit_plan
