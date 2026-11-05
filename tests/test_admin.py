@@ -288,3 +288,20 @@ def test_parte_da_entrada_que_veio_do_cache_por_estado(db, make_user):
     [session] = queries.tokens_by_state(db, start=None)["rows"]
 
     assert session["cached"] == 1500 and session["cache_share"] == 1500 / 4000
+
+
+def test_custo_usa_o_preco_de_cada_modelo(db, make_user):
+    """O modelo reserva (3.1 Flash-Lite) é mais barato que o principal: o custo segue o modelo de cada chamada."""
+    ana = make_user()
+    for model in ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite"):
+        db.add(LlmCall(user_id=ana.id, label="idle", model=model, prompt_tokens=1_000_000, output_tokens=0,
+                       created_at=AGORA))
+    db.flush()
+
+    [idle] = queries.tokens_by_state(db, start=None)["rows"]
+
+    principal = queries.PRICES_PER_MTOK["gemini-3.5-flash-lite"]["prompt"]
+    reserva = queries.PRICES_PER_MTOK["gemini-3.1-flash-lite"]["prompt"]
+    assert idle["cost"] == principal + reserva
+    assert queries.estimated_cost(1_000_000, 0, model="gemini-3.1-flash-lite-preview") == reserva
+    assert queries.estimated_cost(1_000_000, 0, model="modelo-desconhecido") == principal

@@ -1,11 +1,9 @@
 """Agente de tool-calling pro estado `onboarding`."""
 import logging
 
-from google import genai
 from google.genai import types
 
-from agent.config import settings
-from agent.llm_usage import record_gemini
+from agent import llm_call
 from agent.shared import ARNALDO_STYLE_RULES, ONBOARDING_FEATURES, _fix_whatsapp_bold, arnaldo_header, enter_idle
 from agent.schemas.replies import ButtonsReply, TextReply
 from agent.terms import ACCEPT_BUTTONS, TERMS_LINKS, has_accepted
@@ -15,7 +13,6 @@ from ..context.onboarding import build_context
 
 logger = logging.getLogger("agent.onboarding")
 
-_MODEL = "gemini-flash-lite-latest"
 _TEMPERATURE = 0.1
 
 _WELCOME_INTRO = (
@@ -64,7 +61,7 @@ def handle(db, user, text, button_id=None):
     if not text:
         return TextReply("Vamos começar? É só me dizer 🙂"), "onboarding"
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = llm_call.make_client()
     declarations = tools_mod.build_declarations(ctx)
     config = types.GenerateContentConfig(
         system_instruction=_system_prompt(ctx),
@@ -73,9 +70,7 @@ def handle(db, user, text, button_id=None):
     )
     contents = [types.Content(role="user", parts=[types.Part(text=text)])]
 
-    response = client.models.generate_content(model=_MODEL, contents=contents, config=config)
-
-    record_gemini("onboarding", response)
+    response = llm_call.generate(client, contents=contents, config=config, label="onboarding")
     candidate = response.candidates[0] if response.candidates else None
     parts = candidate.content.parts if (candidate and candidate.content and candidate.content.parts) else []
     function_calls = [p.function_call for p in parts if p.function_call is not None]

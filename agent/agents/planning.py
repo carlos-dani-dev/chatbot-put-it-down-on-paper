@@ -1,12 +1,10 @@
 """Agente de tool-calling pro estado `planning`."""
 import logging
 
-from google import genai
 from google.genai import types
 
 from agent import billing
-from agent.config import settings
-from agent.llm_usage import record_gemini
+from agent import llm_call
 from agent.shared import (
     ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_header, enter_idle, enter_session_setup, plans_with_ids,
 )
@@ -17,7 +15,6 @@ from ..context.planning import build_context
 
 logger = logging.getLogger("agent.planning")
 
-_MODEL = "gemini-flash-lite-latest"
 _TEMPERATURE = 0.1
 _MAX_TOOL_ROUNDS = 4
 
@@ -108,7 +105,7 @@ def handle(db, user, text, button_id=None):
     if not text:
         return TextReply("Me manda o nome e os exercícios do plano, ou o que você quiser fazer. 🙂"), "planning"
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = llm_call.make_client()
     next_state = "planning"
     contents = [types.Content(role="user", parts=[types.Part(text=text)])]
 
@@ -120,8 +117,7 @@ def handle(db, user, text, button_id=None):
             temperature=_TEMPERATURE,
             tools=[types.Tool(function_declarations=declarations)],
         )
-        response = client.models.generate_content(model=_MODEL, contents=contents, config=config)
-        record_gemini("planning", response)
+        response = llm_call.generate(client, contents=contents, config=config, label="planning")
         candidate = response.candidates[0] if response.candidates else None
         parts = candidate.content.parts if (candidate and candidate.content and candidate.content.parts) else []
         function_calls = [p.function_call for p in parts if p.function_call is not None]
@@ -180,12 +176,10 @@ def handle(db, user, text, button_id=None):
         contents.append(types.Content(role="user", parts=response_parts))
 
         if next_state == "idle":
-            closing = client.models.generate_content(
-                model=_MODEL,
-                contents=contents,
+            closing = llm_call.generate(
+                client, contents=contents, label="planning.closing",
                 config=types.GenerateContentConfig(system_instruction=_system_prompt(ctx), temperature=_TEMPERATURE),
             )
-            record_gemini("planning.closing", closing)
             final_text = _fix_whatsapp_bold((closing.text or "").strip() or "✅ Pronto!")
             logger.info("agent.planning final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return enter_idle(db, user, TextReply(final_text))

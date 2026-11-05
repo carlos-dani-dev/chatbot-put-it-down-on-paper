@@ -1,17 +1,12 @@
-import time
 import logging
 
-from google import genai
-from google.genai import errors, types
+from google.genai import types
 
 from pydantic import BaseModel
 
-from ..llm_usage import record_gemini
+from .. import llm_call
 
 logger = logging.getLogger("chatbot-pidop")
-
-DEFAULT_MODEL = "gemini-flash-lite-latest"
-ATTEMPTS = 3
 
 TRANSCRIPTION_PROMPT=(
     "Transcreva o áudio a seguir literalmente, em português. Números e "
@@ -21,11 +16,11 @@ TRANSCRIPTION_PROMPT=(
 )
 
 class GeminiClient:
+    """Chamadas avulsas (menus gerados e transcrição de áudio). Tentativas, tempo máximo e modelo
+    reserva vêm do agent/llm_call.py, igual aos agentes."""
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, attempts: int = ATTEMPTS):
-        self._client = genai.Client(api_key=api_key)
-        self._model = model
-        self._attempts = attempts
+    def __init__(self, api_key: str):
+        self._client = llm_call.make_client()
 
     def generate(self, prompt: str, schema: type[BaseModel] | None = None) -> str:
         config = None
@@ -34,23 +29,8 @@ class GeminiClient:
                 response_mime_type="application/json",
                 response_schema=schema,
             )
-        return self._call(prompt, config=config)
+        return llm_call.generate(self._client, contents=prompt, config=config, label="shared.generate").text
 
     def transcribe(self, audio: bytes, mime_type: str) -> str:
         content = [TRANSCRIPTION_PROMPT, types.Part.from_bytes(data=audio, mime_type=mime_type)]
-        return self._call(content).strip()
-
-    def _call(self, contents, config=None) -> str:
-        for attempt in range(self._attempts):
-            try:
-                response = self._client.models.generate_content(
-                    model=self._model,
-                    contents=contents,
-                    config=config,
-                )
-                record_gemini("shared.generate", response)
-                return response.text
-            except errors.ServerError:
-                if attempt == self._attempts - 1:
-                    raise
-                time.sleep(2**attempt)
+        return llm_call.generate(self._client, contents=content, config=None, label="shared.transcribe").text.strip()

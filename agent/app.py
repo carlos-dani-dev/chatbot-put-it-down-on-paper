@@ -23,7 +23,7 @@ from agent.repos import chat_message_repo
 from agent.repos.user_repo import get_or_create_locked_user
 from agent.schemas.replies import ButtonsReply, CtaUrlReply, ListReply, MultiTextReply
 
-from . import billing, terms
+from . import billing, llm_call, terms
 from .clients.mercadopago import verify_webhook_signature
 from .dashboard import build_dashboard_context
 from .llm_usage import end_turn, start_turn
@@ -69,6 +69,7 @@ async def _read_body(request: Request):
 
 def _process(from_number: str, text: str | None, button_id: str | None = None, message_id: str | None = None):
     start_turn(from_number)
+    llm_call.start_message()
     try:
         return _process_turn(from_number, text, button_id, message_id)
     finally:
@@ -109,6 +110,9 @@ def _process_turn(from_number: str, text: str | None, button_id: str | None, mes
         return reply
 
 
+LLM_UNAVAILABLE_TEXT = "😕 Tive um problema pra processar isso agora. Tenta de novo em instantes?"
+
+
 def _process_and_reply(message):
     if message.message_id:
         try:
@@ -133,6 +137,13 @@ def _process_and_reply(message):
         else:
             provider.send_message(message.from_number, reply.text)
         logger.info(f"[agent] Resposta enviada para {message.from_number}")
+    except llm_call.LLMUnavailable:
+        # os dois modelos falharam: a mensagem foi desfeita, mas o usuário não fica sem resposta
+        logger.exception(f"[agent] LLM indisponível (principal e reserva) para {message.from_number}")
+        try:
+            provider.send_message(message.from_number, LLM_UNAVAILABLE_TEXT)
+        except Exception:
+            logger.exception(f"[agent] Falha ao avisar {message.from_number} da LLM indisponível")
     except Exception:
         logger.exception(f"[agent] Falha ao processar/enviar a resposta para {message.from_number}")
 

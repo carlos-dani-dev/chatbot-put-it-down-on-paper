@@ -3,11 +3,9 @@ restritas ao contexto real (ver `agent/tools/session.py` e `agent/context/sessio
 """
 import logging
 
-from google import genai
 from google.genai import types
 
-from agent.config import settings
-from agent.llm_usage import record_gemini
+from agent import llm_call
 from agent.shared import (
     ARNALDO_PERSONA, ARNALDO_STYLE_RULES, _fix_whatsapp_bold, arnaldo_features, enter_idle, idle_menu,
 )
@@ -19,7 +17,6 @@ from ..context.session import build_context
 
 logger = logging.getLogger("agent.session")
 
-_MODEL = "gemini-flash-lite-latest"
 _MAX_TOOL_ROUNDS = 4
 _TEMPERATURE = 0.1
 
@@ -129,7 +126,7 @@ def handle(db, user, text, button_id=None):
     if not text:
         return TextReply("📝 Me manda as séries, ex.: *supino 80kg 8 reps*"), "session"
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = llm_call.make_client()
 
     next_state = "session"
     contents = [types.Content(role="user", parts=[types.Part(text=text)])]
@@ -149,9 +146,7 @@ def handle(db, user, text, button_id=None):
             tools=[types.Tool(function_declarations=declarations)],
         )
 
-        response = client.models.generate_content(model=_MODEL, contents=contents, config=config)
-
-        record_gemini("session", response)
+        response = llm_call.generate(client, contents=contents, config=config, label="session")
 
         candidate = response.candidates[0] if response.candidates else None
         parts = candidate.content.parts if (candidate and candidate.content and candidate.content.parts) else []
@@ -202,15 +197,13 @@ def handle(db, user, text, button_id=None):
             return TextReply(final_text), next_state
 
         if next_state == "idle":
-            closing = client.models.generate_content(
-                model=_MODEL,
-                contents=contents,
+            closing = llm_call.generate(
+                client, contents=contents, label="session.closing",
                 config=types.GenerateContentConfig(
                     system_instruction=_system_prompt(ctx, facts_confirmed=bool(fact_lines)),
                     temperature=_TEMPERATURE,
                 ),
             )
-            record_gemini("session.closing", closing)
             final_text = _fix_whatsapp_bold(_compose((closing.text or ""), "🎉 Treino finalizado!"))
             logger.info("agent.session final_text(closing) user=%s text=%r", user.phone_number, final_text)
             return TextReply(final_text), next_state

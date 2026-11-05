@@ -148,10 +148,16 @@ class FakeGemini:
         self.models = self  # o código chama client.models.generate_content(...)
 
     def generate_content(self, model, contents, config):
-        self.calls.append({"contents": list(contents), "config": config})
+        self.calls.append({"model": model, "contents": list(contents), "config": config})
         if not self._responses:
             raise AssertionError("o agente chamou o Gemini mais vezes do que o roteiro do teste previa")
-        return self._responses.pop(0)
+        response = self._responses.pop(0)
+        if isinstance(response, BaseException):  # gemini.error(...) no roteiro: a "API" falha nesta chamada
+            raise response
+        return response
+
+    def models_used(self) -> list[str]:
+        return [c["model"] for c in self.calls]
 
     # -- ajudantes pras conferências --
     def system_prompt(self, call: int) -> str:
@@ -196,6 +202,13 @@ class GeminiScript:
         return types.GenerateContentResponse(
             candidates=[types.Candidate(content=types.Content(role="model", parts=[types.Part(text=content)]))]
         )
+
+    @staticmethod
+    def error(code: int, message: str = "erro simulado"):
+        """A API do Gemini falha nesta chamada (ex.: 503 alta demanda, 429 limite, 400 pedido inválido)."""
+        from google.genai import errors
+        cls = errors.ServerError if code >= 500 else errors.ClientError
+        return cls(code, {"error": {"code": code, "message": message, "status": "SIMULADO"}})
 
     def script(self, *responses) -> FakeGemini:
         self.fake = FakeGemini(responses)
@@ -272,6 +285,16 @@ def _no_real_llm(monkeypatch):
 
     monkeypatch.setattr("google.genai.Client", _blocked)
     monkeypatch.setattr("agent.shared._generate", lambda prompt: "[menu gerado pela LLM]")
+
+
+@pytest.fixture(autouse=True)
+def _llm_call_limpo(monkeypatch):
+    """Cada teste começa com o modelo principal disponível e sem esperar de verdade entre tentativas."""
+    from agent import llm_call
+    llm_call.reset()
+    monkeypatch.setattr("agent.llm_call._sleep", lambda _seconds: None)
+    yield
+    llm_call.reset()
 
 
 @pytest.fixture(autouse=True)

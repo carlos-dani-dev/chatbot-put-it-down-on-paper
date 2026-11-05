@@ -18,6 +18,9 @@ class Settings:
     meta_verify_token: str = os.getenv("META_VERIFY_TOKEN", "meu_token_de_verificacao")
 
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    # modelo principal e o reserva, usado quando o principal falha (ver agent/llm_call.py)
+    llm_model: str = os.getenv("LLM_MODEL", "gemini-flash-lite-latest")
+    llm_fallback_model: str = os.getenv("LLM_FALLBACK_MODEL", "gemini-3.1-flash-lite")
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
 
     db_url: str = os.getenv("SQLALCHEMY_DB_URL")
