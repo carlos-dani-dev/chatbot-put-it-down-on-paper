@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1118">
 <title>Arnaldo · Seus resultados</title>
-<link rel="icon" href="/static/arnaldo.png">
+<link rel="icon" href="/static/arnaldo-whatsapp.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -41,7 +41,6 @@
     --accent-soft: rgba(37, 211, 102, .12);
     --accent-border: rgba(37, 211, 102, .5);
     --warning-soft: rgba(245, 184, 74, .12);
-    --avatar-gradient: linear-gradient(135deg, #25D366, #0F6B50);
   }
 
   * { box-sizing: border-box; }
@@ -60,8 +59,8 @@
   .page { max-width: 480px; margin: 0 auto; padding: 0 var(--space-4) calc(var(--space-7) + env(safe-area-inset-bottom)); overflow-x: clip; }
 
   /* ---------- assinatura e avatar ---------- */
-  .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--avatar-gradient); display: flex; align-items: center; justify-content: center; flex: none; }
-  .avatar img { width: 80%; height: 80%; object-fit: contain; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; border: var(--border); overflow: hidden; display: flex; flex: none; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
   /* ---------- barra do topo ---------- */
   .topbar {
@@ -337,7 +336,7 @@
 <label for="menu-toggle" class="drawer-overlay" aria-hidden="true"></label>
 <nav class="drawer" aria-label="Menu">
   <div class="drawer-head">
-    <span class="avatar"><img src="/static/arnaldo-avatar.png" alt=""></span>
+    <span class="avatar"><img src="/static/arnaldo-whatsapp.png" alt=""></span>
     <div>
       <div class="title">Arnaldo<span>.gym.ai</span></div>
       <div class="sub">{{ user.phone_number }}</div>
@@ -377,7 +376,7 @@
 
   <header class="topbar">
     <a href="#home" class="brand">
-      <span class="avatar"><img src="/static/arnaldo-avatar.png" alt="Arnaldo"></span>
+      <span class="avatar"><img src="/static/arnaldo-whatsapp.png" alt="Arnaldo"></span>
       <span class="name">Arnaldo<span>.gym.ai</span></span>
     </a>
     <label for="menu-toggle" class="menu-btn" aria-label="Abrir menu">
