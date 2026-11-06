@@ -151,13 +151,84 @@
     <section id="como-funciona" class="border-t border-line py-16 lg:py-[100px] text-center">
       <p class="text-[12px] font-bold uppercase tracking-eyebrow text-wa">Como funciona</p>
       <h2 class="mt-4 text-[34px] lg:text-[44px] font-extrabold tracking-display">Três passos. Zero fricção.</h2>
-      <ol class="mt-16 grid md:grid-cols-3 gap-12 md:gap-5">
-        <li v-for="(step, i) in content.steps" :key="step.title">
-          <span class="mx-auto h-[52px] w-[52px] rounded-full border border-wa bg-wa/5 flex items-center justify-center text-[16px] font-semibold text-wa">[[ i + 1 ]]</span>
-          <h3 class="mt-6 text-[18px] font-bold">[[ step.title ]]</h3>
-          <p class="mt-2 text-[15px] text-muted">[[ step.text ]]</p>
+      <!-- celular: linhas compactas (número + texto); a partir do tablet: três colunas centralizadas -->
+      <ol class="mt-10 md:mt-16 grid md:grid-cols-3 gap-6 md:gap-5 text-left md:text-center">
+        <li v-for="(step, i) in content.steps" :key="step.title" class="flex md:block items-start gap-4">
+          <span class="shrink-0 md:mx-auto h-11 w-11 md:h-[52px] md:w-[52px] rounded-full border border-wa bg-wa/5 flex items-center justify-center text-[16px] font-semibold text-wa">[[ i + 1 ]]</span>
+          <div>
+            <h3 class="md:mt-6 text-[18px] font-bold">[[ step.title ]]</h3>
+            <p class="mt-1 md:mt-2 text-[15px] text-muted">[[ step.text ]]</p>
+          </div>
         </li>
       </ol>
+
+      <!-- o uso de verdade (vídeo) e o que a pessoa recebe (página de resultados) -->
+      <!-- celular: os dois deslizam na horizontal (o segundo aparece pela borda); tablet+: lado a lado -->
+      <div class="mt-12 md:mt-20 -mx-4 px-4 flex sm:grid sm:grid-cols-2 gap-4 sm:gap-8 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:mx-auto sm:px-0 max-w-[700px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <figure class="shrink-0 w-[75%] sm:w-auto snap-center">
+          <div class="mx-auto w-full max-w-[290px] rounded-[36px] border border-line bg-phone p-[10px]">
+            <div class="relative overflow-hidden rounded-[27px] bg-screen" style="aspect-ratio: 576 / 1280;">
+              <video id="demo-video" class="h-full w-full object-cover cursor-pointer" muted loop playsinline preload="none"
+                     poster="{{ asset('exemplo-supino.jpg') }}" aria-label="Gravação de tela de uma conversa com o Arnaldo no WhatsApp">
+                <source src="{{ asset('exemplo-supino.mp4') }}" type="video/mp4">
+              </video>
+            </div>
+          </div>
+          <figcaption class="mt-4 text-[14px] text-muted">No WhatsApp: gravação de tela real</figcaption>
+        </figure>
+
+        <figure class="shrink-0 w-[75%] sm:w-auto snap-center">
+          <div class="mx-auto w-full max-w-[290px] rounded-[36px] border border-line bg-phone p-[10px]" aria-hidden="true">
+            <div class="relative overflow-hidden rounded-[27px] bg-ink text-left" style="aspect-ratio: 576 / 1280;">
+              <div class="absolute -top-10 -right-20 h-[220px] w-[220px] rounded-full" style="background: radial-gradient(circle, rgba(19, 83, 50, .9) 0%, rgba(11, 17, 24, 0) 68%);"></div>
+              <div class="relative flex items-center justify-between border-b border-line px-4 pt-5 pb-3">
+                <span class="flex items-center gap-2 text-[12px] font-bold">
+                  <span class="h-6 w-6 rounded-full bg-gradient-to-br from-wa to-wadark flex items-center justify-center"><img src="{{ asset('arnaldo-avatar.png') }}" alt="" class="w-[80%] h-[80%]"></span>
+                  Arnaldo<span class="font-normal text-muted -ml-1">.gym.ai</span>
+                </span>
+                <svg width="14" height="10" viewBox="0 0 22 16" fill="none"><path d="M0 1h22M0 8h22M0 15h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+              <div class="relative px-4 pt-5">
+                <span class="inline-flex rounded-full border border-wa/30 bg-wa/5 px-2.5 py-[3px] text-[10px] font-bold text-wa">Seus resultados</span>
+                <p class="mt-3 text-[21px] font-extrabold tracking-display leading-[1.1]">Bora ver sua <span class="text-wa">evolução.</span></p>
+                <p class="mt-1.5 text-[11px] text-muted">Treinando com o Arnaldo desde 09/2026</p>
+
+                <p class="mt-5 text-[9px] font-bold uppercase tracking-eyebrow text-wa">Treino mais recente</p>
+                <div class="mt-2 rounded-[14px] border border-wa/50 bg-[#10211B] p-3">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <p class="text-[14px] font-extrabold leading-tight">Hoje, 06/11</p>
+                      <p class="text-[11px] text-muted">Push</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-[17px] font-extrabold leading-none">4.8K<span class="text-[10px] font-medium text-muted ml-0.5">kg</span></p>
+                      <p class="mt-1 text-[8px] font-bold tracking-[.12em] text-muted">VOLUME</p>
+                    </div>
+                  </div>
+                  <div class="mt-2.5 flex flex-wrap gap-1">
+                    <span class="rounded-full border border-line px-2 py-[2px] text-[9px] font-bold text-muted">12 séries</span>
+                    <span class="rounded-full border border-line px-2 py-[2px] text-[9px] font-bold text-muted">3 exercícios</span>
+                    <span class="rounded-full border border-line px-2 py-[2px] text-[9px] font-bold text-muted">58min</span>
+                  </div>
+                  <div class="mt-3 flex justify-between text-[11px] font-bold"><span>Plano cumprido</span><span>90%</span></div>
+                  <div class="mt-1.5 h-1.5 rounded-full bg-botbubble"><div class="h-full w-[90%] rounded-full bg-wa"></div></div>
+                </div>
+
+                <p class="mt-5 text-[9px] font-bold uppercase tracking-eyebrow text-wa">Calendário</p>
+                <div class="mt-2 rounded-[14px] border border-line bg-card p-3">
+                  <p class="text-[11px] font-bold">Novembro 2026</p>
+                  <div class="mt-2 grid grid-cols-7 gap-1 text-center text-[9px] font-medium text-muted">
+                    <template v-for="d in 21" :key="d">
+                      <span class="aspect-square rounded-[4px] flex items-center justify-center" :class="[2, 4, 6, 9, 11, 13, 16, 18, 20].includes(d) ? 'bg-wa text-ink font-extrabold' : 'bg-botbubble'">[[ d ]]</span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="mt-4 text-[14px] text-muted">Sua página de resultados · valores ilustrativos</figcaption>
+        </figure>
+      </div>
     </section>
 
     <!-- preço -->
@@ -236,6 +307,24 @@
         { rootMargin: '-45% 0px -50% 0px' },
       );
       document.querySelectorAll('section[id]').forEach((s) => observer.observe(s));
+
+      // vídeo de exemplo (~10 MB): só baixa quando aparece na tela, toca sem som enquanto visível
+      // e pausa ao sair. Um toque pausa/retoma. Quem pediu menos movimento no sistema toca no toque.
+      const video = document.getElementById('demo-video');
+      if (video) {
+        let pausedByUser = false;
+        const autoplay = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        video.addEventListener('click', () => {
+          if (video.paused) { pausedByUser = false; video.play().catch(() => {}); }
+          else { pausedByUser = true; video.pause(); }
+        });
+        if (autoplay) {
+          new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !pausedByUser) video.play().catch(() => {});
+            else if (!entry.isIntersecting) video.pause();
+          }, { threshold: 0.5 }).observe(video);
+        }
+      }
     },
   }).mount('#app');
 </script>
