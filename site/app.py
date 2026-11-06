@@ -29,24 +29,11 @@ PRO_DAILY_MESSAGES = 250
 
 CONTENT = {
     "whatsapp_url": f"https://wa.me/{WHATSAPP_NUMBER}",
-    "stats": [
-        {"strong": "Grátis", "text": "para começar"},
-        {"strong": "Sem", "text": "instalar nada"},
-        {"strong": "30s", "text": "para o 1º registro"},
-    ],
-    "features": [
-        {
-            "title": "Registro por mensagem",
-            "text": "Mande \"supino 80kg 8 reps\" e pronto. O Arnaldo entende e anota.",
-        },
-        {
-            "title": "Controle de carga",
-            "text": "Acompanhe sua evolução de carga treino a treino, sem fazer conta.",
-        },
-        {
-            "title": "Histórico na hora",
-            "text": "Pergunte como foi da última vez e veja seu desempenho anterior.",
-        },
+    # o caminho de UMA série num app de treino típico (comparativo com uma mensagem no Arnaldo)
+    "app_taps": [
+        "Abrir o app", "Entrar no treino", "Achar o exercício", "Abrir o exercício",
+        "Adicionar série", "Tocar na carga", "Apagar o valor antigo", "Digitar a carga",
+        "Tocar nas repetições", "Digitar as repetições", "Confirmar", "Fechar o descanso",
     ],
     "steps": [
         {"title": "Chame no WhatsApp", "text": "Sem baixar app nem criar conta complicada."},
