@@ -39,7 +39,7 @@ def test_registro_monta_a_resposta_em_codigo_sem_segunda_chamada(db, user, start
 
     assert estado == "session"
     assert resposta.text == (
-        "✅ *Agachamento livre*: série 1 (60kg x 10) — progresso 1/2, falta 1 série\n\n"
+        "✅ *Agachamento livre*: série 1 (60kg x 10), progresso 1/2, falta 1 série\n\n"
         "Boa! Manda a próxima. 💪"
     )
     assert numero_de_series(db) == 1

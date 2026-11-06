@@ -17,11 +17,28 @@ def _recent_history(db: Any, user: User, limit: int = 2) -> str:
 _MARKDOWN_LINK_RE = re.compile(r"\[([^\]\n]*)\]\((https?://[^\s)]+)\)")
 
 
+_RANGE_DASH_RE = re.compile(r"(\d)\s*[–—]\s*(\d)")
+_LIST_DASH_RE = re.compile(r"^([ \t]*)[-–—][ \t]+", re.MULTILINE)
+_SEPARATOR_DASH_RE = re.compile(r"[ \t]*(?:[–—]|(?<=\s)-(?=\s))[ \t]*")
+_ORPHAN_COMMA_RE = re.compile(r"^[ \t]*,[ \t]*|,[ \t]*(?=[.,!?:;)]|$)", re.MULTILINE)
+
+
+def _remove_dashes(text: str) -> str:
+    """Sem travessão nas mensagens: item de lista vira •, intervalo ("10–12") vira "10 a 12" e
+    travessão ou hífen solto entre palavras vira vírgula. Hífen dentro de palavra (bem-vindo) fica."""
+    text = _RANGE_DASH_RE.sub(r"\1 a \2", text)
+    text = _LIST_DASH_RE.sub(r"\1• ", text)
+    text = _SEPARATOR_DASH_RE.sub(", ", text)
+    return _ORPHAN_COMMA_RE.sub("", text)
+
+
 def _fix_whatsapp_bold(text: str) -> str:
+    """Ajusta todo texto gerado pela LLM antes de ir pro WhatsApp: negrito, links e travessões."""
     text = text.replace("**", "*")
     text = re.sub(r"\*([^*\n]+)\*", lambda m: f"*{m.group(1).strip()}*", text)
-    # WhatsApp não entende link em Markdown ([texto](url)) — só autolinka URL crua no texto.
-    return _MARKDOWN_LINK_RE.sub(lambda m: m.group(2), text)
+    # WhatsApp não entende link em Markdown ([texto](url)): só autolinka URL crua no texto.
+    text = _MARKDOWN_LINK_RE.sub(lambda m: m.group(2), text)
+    return _remove_dashes(text)
 
 
 def _generate(prompt: str) -> str:
@@ -62,20 +79,26 @@ SESSION_SETUP_FEATURES = [
 ARNALDO_STYLE_RULES = (
     "- É MUITO importante lembrar o usuário das funcionalidades e possibilidades: sempre que "
     "fizer sentido, termine a resposta sugerindo o próximo passo mais útil, citando de 1 a 3 "
-    "funcionalidades da lista do que ele pode fazer, com o nome em *negrito* (ex.: *Ver resultados*). Escolha só "
-    "as que combinam com o momento — nunca despeje a lista inteira de uma vez.\n"
+    "funcionalidades da lista do que a pessoa pode fazer, com o nome em *negrito* (ex.: *Ver resultados*). Escolha só "
+    "as que combinam com o momento, nunca despeje a lista inteira de uma vez.\n"
     "- Use emojis, mas com moderação: 1 ou 2 por mensagem, no máximo (ex.: 💪 🏋️ 📈 ✅ 📋), "
-    "sempre combinando com o conteúdo — nunca encha a mensagem de emojis.\n"
+    "sempre combinando com o conteúdo, nunca encha a mensagem de emojis.\n"
     "- Negrito no WhatsApp é um asterisco só de cada lado, colado na palavra (*assim*), nunca "
     "dois e nunca com espaço entre o asterisco e a palavra.\n"
     "- Seja sucinto: mensagens curtas, fáceis de ler no celular.\n"
+    "- Linguagem neutra de gênero: você não sabe se fala com um homem ou uma mulher. Nunca chame a pessoa de "
+    "'parceiro', 'parceira', 'bro', 'mano', 'cara', 'campeão', 'guerreiro' ou parecidos, e evite palavras "
+    "que mudam com o gênero dela (ex.: em vez de 'pronto pra treinar?', 'bora treinar?'; em vez de "
+    "'bem-vindo', 'boas-vindas'; em vez de 'você está cansado?', 'bateu o cansaço?').\n"
+    "- Nunca use travessão (— ou –) nem hífen como separador de frase. Pra listas, use • no começo "
+    "de cada item, nunca '-'.\n"
 )
 
 
 ARNALDO_PERSONA = (
     "Você é o *Arnaldo* 💪, um agente de IA no WhatsApp cuja missão é facilitar o controle de "
-    "carga e o registro de treinos de musculação. O usuário fala em linguagem natural e você "
-    "organiza, registra e acompanha a evolução dele. Fale como um parceiro de treino: direto, "
+    "carga e o registro de treinos de musculação. A pessoa fala em linguagem natural e você "
+    "organiza, registra e acompanha a evolução dela. Fale como quem treina junto: direto, "
     "animado e sem enrolação.\n\n"
 )
 
@@ -91,7 +114,7 @@ def arnaldo_features(where: str, features: list[tuple[str, str]]) -> str:
     features_text = "\n".join(f"- *{name}*: {how}" for name, how in features)
     return (
         f"Onde o usuário está agora: {where}\n\n"
-        "O que ele pode fazer neste momento (ao sugerir, use estes nomes em negrito):\n"
+        "O que a pessoa pode fazer neste momento (ao sugerir, use estes nomes em negrito):\n"
         f"{features_text}\n\n"
     )
 
@@ -110,23 +133,23 @@ _ENTER_PLANNING_PROMPT = (
             ("Começar um treino", "desistir de planejar e ir direto treinar"),
         ],
     )
-    + "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
-    "Planos de treino que ele já tem salvos (pode estar vazio): {plans}\n\n"
+    + "Últimas mensagens trocadas com a pessoa, para contexto (pode estar vazio):\n{history}\n\n"
+    "Planos de treino que a pessoa já tem salvos (pode estar vazio): {plans}\n\n"
     "{note}"
     "Escreva a próxima mensagem do Arnaldo, respeitando:\n"
-    "- Se ele já tiver planos salvos, cite os nomes deles.\n"
+    "- Se a pessoa já tiver planos salvos, cite os nomes deles.\n"
     "- É de suma importância pedir SEMPRE o nome do plano novo, os exercícios e a "
-    "quantidade de séries para cada um deles — sem isso o plano não pode ser criado.\n"
+    "quantidade de séries para cada um deles, sem isso o plano não pode ser criado.\n"
     + ARNALDO_STYLE_RULES
 )
 
 _IDLE_MENU_PROMPT = (
     arnaldo_header("no menu principal.", IDLE_FEATURES)
-    + "Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{history}\n\n"
+    + "Últimas mensagens trocadas com a pessoa, para contexto (pode estar vazio):\n{history}\n\n"
     "{intro}"
     "Escreva a próxima mensagem do Arnaldo, respeitando:\n"
-    "- É fundamental perguntar o que ele quer fazer, destacando principalmente *Começar um "
-    "treino* e *Criar um plano*, e lembrando que ele pode *Ver resultados* quando quiser.\n"
+    "- É fundamental perguntar o que a pessoa quer fazer, destacando principalmente *Começar um "
+    "treino* e *Criar um plano*, e lembrando que a pessoa pode *Ver resultados* quando quiser.\n"
     + ARNALDO_STYLE_RULES
 )
 

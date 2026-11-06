@@ -45,7 +45,7 @@ def _duplicate_name_error(plan) -> dict:
         "ok": False,
         "error": (
             f"Já existe um plano salvo chamado '{plan.name}' (plan_id plan:{plan.id}). Nada foi criado. "
-            "Se ele quer mudar esse plano (adicionar/tirar exercícios, mudar séries), chame edit_plan; "
+            "Se a pessoa quer mudar esse plano (adicionar/tirar exercícios, mudar séries), chame edit_plan; "
             "se quer mesmo um plano novo, peça outro nome."
         ),
     }
@@ -73,7 +73,7 @@ def _plans_limit_error(limits: PlanLimits) -> dict:
         "limit_reached": "plans",
         "error": (
             f"Limite do plano Grátis: até {limits.max_plans} plano ativo, e o usuário já tem "
-            f"{limits.active_plans}. Pra criar outro ele precisa excluir um plano ou assinar o Pro "
+            f"{limits.active_plans}. Pra criar outro a pessoa precisa excluir um plano ou assinar o Pro "
             "(planos ilimitados). Nada foi criado."
         ),
     }
@@ -92,7 +92,7 @@ def add_to_draft(
     if draft is None:
         plan_name = (name or "").strip()[:60]
         if not plan_name:
-            return {"ok": False, "error": "Ainda não há rascunho — informe o nome do plano junto com os exercícios."}
+            return {"ok": False, "error": "Ainda não há rascunho: informe o nome do plano junto com os exercícios."}
         existing = _saved_plan_named(ctx, plan_name)
         if existing is not None:
             return _duplicate_name_error(existing)
@@ -112,7 +112,7 @@ def add_to_draft(
                 "ok": False,
                 "error": (
                     f"'{ex_name}' não é o nome de um exercício. Nada foi adicionado: pergunte ao usuário "
-                    "QUAIS exercícios ele quer e com quantas séries — nunca invente."
+                    "QUAIS exercícios quer e com quantas séries, nunca invente."
                 ),
             }
         if _norm(ex_name) in seen:
@@ -136,8 +136,8 @@ def add_to_draft(
             "limit_reached": "exercises",
             "error": (
                 f"Limite do plano Grátis: até {max_ex} exercícios por plano. O rascunho tem "
-                f"{len(draft['items'])} e o usuário tentou adicionar {len(validated_items)} — cabem só mais "
-                f"{room}. Nenhum exercício desta mensagem foi adicionado. Ele pode mandar só {room} "
+                f"{len(draft['items'])} e o usuário tentou adicionar {len(validated_items)}: cabem só mais "
+                f"{room}. Nenhum exercício desta mensagem foi adicionado. A pessoa pode mandar só {room} "
                 "exercício(s), salvar assim, ou assinar o Pro pra ter exercícios ilimitados."
             ),
         }
@@ -227,7 +227,7 @@ def save_draft(db: Any, user: User, ctx: PlanningContext) -> dict:
             "ok": False,
             "limit_reached": "exercises",
             "error": f"Limite do plano Grátis: até {max_ex} exercícios por plano, e o rascunho tem "
-                     f"{len(ctx.draft['items'])}. Ele precisa tirar exercícios ou assinar o Pro.",
+                     f"{len(ctx.draft['items'])}. A pessoa precisa tirar exercícios ou assinar o Pro.",
         }
 
     if editing_id is not None:
@@ -389,7 +389,7 @@ def build_declarations(ctx: PlanningContext) -> list[types.FunctionDeclaration]:
         types.FunctionDeclaration(
             name="add_to_draft",
             description=(
-                "Cria (se ainda não existir) ou acrescenta exercícios ao plano que está aberto — um "
+                "Cria (se ainda não existir) ou acrescenta exercícios ao plano que está aberto: um "
                 "rascunho novo ou um plano salvo em edição. Só com exercícios que o usuário nomeou."
             ),
             parameters=types.Schema(
@@ -397,7 +397,7 @@ def build_declarations(ctx: PlanningContext) -> list[types.FunctionDeclaration]:
                 properties={
                     "name": types.Schema(
                         type="STRING",
-                        description="Nome do plano — obrigatório só se ainda não houver rascunho.",
+                        description="Nome do plano, obrigatório só se ainda não houver rascunho.",
                     ),
                     "exercises": types.Schema(
                         type="ARRAY",

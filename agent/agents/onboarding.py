@@ -16,7 +16,7 @@ logger = logging.getLogger("agent.onboarding")
 _TEMPERATURE = 0.1
 
 _WELCOME_INTRO = (
-    "💪 Eai, gym bro! Eu sou o *Arnaldo*, seu parceiro pra controlar carga e registrar treinos.\n\n"
+    "💪 E aí! Eu sou o *Arnaldo*, seu parceiro pra controlar carga e registrar treinos.\n\n"
     "*Registre treinos*, séries e cargas em linguagem natural\n"
     "*Crie planos de treino* ou treine livre\n"
     "*Acompanhe sua evolução* com recordes e gráficos\n\n"
@@ -32,19 +32,19 @@ _WELCOME_WITH_TERMS = (
 def _system_prompt(ctx) -> str:
     return (
         arnaldo_header(
-            "nas boas-vindas (onboarding). Você já se apresentou e perguntou se ele quer começar.",
+            "nas boas-vindas (onboarding). Você já se apresentou e perguntou se a pessoa quer começar.",
             ONBOARDING_FEATURES,
         )
-        + f"Últimas mensagens trocadas com ele, para contexto (pode estar vazio):\n{ctx.history}\n\n"
+        + f"Últimas mensagens trocadas com a pessoa, para contexto (pode estar vazio):\n{ctx.history}\n\n"
         "Regras importantes:\n"
-        "- Se ele confirmar que quer começar, chame confirm_start.\n"
-        "- Se ele disser que não quer começar agora, chame decline_start.\n"
+        "- Se a pessoa confirmar que quer começar, chame confirm_start.\n"
+        "- Se a pessoa disser que não quer começar agora, chame decline_start.\n"
         "- Se for uma pergunta sobre como você funciona, responda direto em texto, breve, usando "
-        "só as funcionalidades da lista acima (em negrito) — e termine perguntando se ele quer "
+        "só as funcionalidades da lista acima (em negrito), e termine perguntando se a pessoa quer "
         "*Começar agora*.\n"
         "- Sua resposta final só pode afirmar o que uma ferramenta confirmou, nunca invente "
         "fatos sobre o que já aconteceu.\n"
-        "- Se não for nada disso, responda em texto pedindo pra ele confirmar se quer começar.\n"
+        "- Se não for nada disso, responda em texto pedindo pra pessoa confirmar se quer começar.\n"
         + ARNALDO_STYLE_RULES
     )
 

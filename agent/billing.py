@@ -283,7 +283,7 @@ class PlanLimits:
         if self.is_pro:
             return f"Pro (planos e exercícios ilimitados), ativo até {format_local_time(self.pro_until)}."
         return (
-            f"Grátis — até {self.max_plans} plano ativo, com até {self.max_exercises_per_plan} "
+            f"Grátis: até {self.max_plans} plano ativo, com até {self.max_exercises_per_plan} "
             f"exercícios por plano (hoje tem {self.active_plans} plano(s) ativo(s)). "
             f"O *Pro* libera planos e exercícios ilimitados por {format_brl(PRO_PRICE)} a cada {PRO_DAYS} dias."
         )

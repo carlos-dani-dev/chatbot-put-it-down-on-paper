@@ -139,7 +139,7 @@ def format_log_sets_fact(result: dict) -> str:
         else:
             faltam = result["remaining_sets"]
             situacao = f"falta {faltam} série" if faltam == 1 else f"faltam {faltam} séries"
-        progresso = f" — progresso {done}/{target}, {situacao}"
+        progresso = f", progresso {done}/{target}, {situacao}"
     line = f"✅ *{result['exercise_name']}*: {faixa} ({sets_desc}){progresso}"
     if result.get("all_targets_reached") and just_reached:
         line += "\n🏁 Todos os exercícios do plano bateram a meta!"
@@ -233,7 +233,7 @@ def finish_session(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext)
 
 def list_exercises(db: Any, user: User, ws: WorkoutSession, ctx: SessionContext) -> dict:
     if not ctx.exercises:
-        return {"ok": True, "exercises": [], "note": "Treino livre, sem plano — nenhum exercício pré-definido ainda."}
+        return {"ok": True, "exercises": [], "note": "Treino livre, sem plano: nenhum exercício pré-definido ainda."}
     return {
         "ok": True,
         "exercises": [
@@ -300,7 +300,7 @@ def build_declarations(ctx: SessionContext) -> list[types.FunctionDeclaration]:
                 ),
                 "new_exercise_name": types.Schema(
                     type="STRING",
-                    description="Nome do exercício novo — só preencher se exercise_id for 'new'.",
+                    description="Nome do exercício novo; só preencher se exercise_id for 'new'.",
                 ),
                 "sets": types.Schema(
                     type="ARRAY",

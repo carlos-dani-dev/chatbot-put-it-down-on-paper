@@ -29,7 +29,7 @@ def resultado(done, target=None, sets=((60, 10),), name="Agachamento livre", **e
 def test_o_caso_do_bug_falta_uma_serie_e_nao_diz_meta_batida():
     linha = format_log_sets_fact(resultado(done=1, target=2))  # 1ª série de um exercício com meta 2
 
-    assert linha == "✅ *Agachamento livre*: série 1 (60kg x 10) — progresso 1/2, falta 1 série"
+    assert linha == "✅ *Agachamento livre*: série 1 (60kg x 10), progresso 1/2, falta 1 série"
     assert "meta batida" not in linha
 
 
