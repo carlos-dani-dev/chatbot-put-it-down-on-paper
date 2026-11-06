@@ -7,6 +7,7 @@ Rodar com (da raiz do projeto):
 `site` é também um módulo da biblioteca padrão do Python, então `site.app:app` não
 importa — por isso o `--app-dir site`.
 """
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote
 
@@ -29,29 +30,37 @@ PRO_DAILY_MESSAGES = 250
 
 CONTENT = {
     "whatsapp_url": f"https://wa.me/{WHATSAPP_NUMBER}",
-    "stats": [
-        {"strong": "Grátis", "text": "para começar"},
-        {"strong": "Sem", "text": "instalar nada"},
-        {"strong": "30s", "text": "para o 1º registro"},
-    ],
-    "features": [
-        {
-            "title": "Registro por mensagem",
-            "text": "Mande \"supino 80kg 8 reps\" e pronto. O Arnaldo entende e anota.",
-        },
-        {
-            "title": "Controle de carga",
-            "text": "Acompanhe sua evolução de carga treino a treino, sem fazer conta.",
-        },
-        {
-            "title": "Histórico na hora",
-            "text": "Pergunte como foi da última vez e veja seu desempenho anterior.",
-        },
+    # o caminho de UMA série num app de treino típico — o argumento central do site
+    "app_taps": [
+        "Desbloquear o celular e abrir o app",
+        "Entrar no treino de hoje",
+        "Achar o supino na lista",
+        "Abrir o exercício",
+        "Tocar em \"adicionar série\"",
+        "Tocar no campo de carga",
+        "Apagar o valor da última vez",
+        "Digitar 80",
+        "Tocar no campo de repetições",
+        "Digitar 8",
+        "Confirmar a série",
+        "Fechar o cronômetro de descanso",
     ],
     "steps": [
-        {"title": "Chame no WhatsApp", "text": "Sem baixar app nem criar conta complicada."},
-        {"title": "Conte seu treino", "text": "Escreva como falaria com um parceiro."},
-        {"title": "Bata seus recordes", "text": "Veja a carga subir a cada semana."},
+        {"title": "Chame no WhatsApp", "text": "O app que você já usa. Sem baixar nada, sem criar conta."},
+        {"title": "Conte o treino como falaria com um parceiro",
+         "text": "\"supino 80kg 8, 8 e 7\". Várias séries de uma vez, do seu jeito."},
+        {"title": "Veja a carga subir", "text": "Peça seus resultados e abra o calendário, os gráficos e os recordes."},
+    ],
+    # nomes fixos do manual da marca; `example` mostra o recurso na voz do Arnaldo
+    "features": [
+        {"title": "Treino guiado por metas", "text": "A cada série, o Arnaldo diz quanto falta e qual é o próximo exercício.",
+         "example": "progresso 3/4, falta 1 série"},
+        {"title": "Desempenho anterior", "text": "Pergunte quanto fez da última vez e saiba de onde partir hoje.",
+         "example": "Na última vez: 32kg x 10. Bora tentar 34kg?"},
+        {"title": "Planos de treino", "text": "Monte, edite e exclua planos pelo chat, com a meta de séries de cada exercício.",
+         "example": "Push: supino 4 séries, desenvolvimento 3"},
+        {"title": "Página de resultados", "text": "Calendário, progressão por exercício, recordes e ficha. Dá pra mandar em PDF pro parceiro de treino.",
+         "example": "Supino reto: 60kg → 80kg"},
     ],
     # itens dos planos refletem os limites reais de agent/billing.py
     "plans": [
@@ -71,7 +80,7 @@ CONTENT = {
         {
             "name": "Pro",
             "price": PRO_PRICE,
-            "period": "/mês",
+            "period": "/ 30 dias",
             "items": [
                 "Tudo do plano Grátis",
                 f"Até {PRO_DAILY_MESSAGES} mensagens por dia",
@@ -134,7 +143,7 @@ templates.env.filters["todo"] = todo
 # a página inicial do site fica em "/". HEAD além de GET: monitores como o UptimeRobot checam com HEAD
 @app.api_route("/", methods=["GET", "HEAD"])
 async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"content": CONTENT})
+    return templates.TemplateResponse(request, "index.html", {"content": CONTENT, "year": date.today().year})
 
 
 @app.api_route("/termos", methods=["GET", "HEAD"])
