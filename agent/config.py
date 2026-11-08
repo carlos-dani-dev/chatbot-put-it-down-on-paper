@@ -18,9 +18,16 @@ class Settings:
     meta_verify_token: str = os.getenv("META_VERIFY_TOKEN", "meu_token_de_verificacao")
 
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    # modelo principal e o reserva, usado quando o principal falha (ver agent/llm_call.py)
+    # modelo principal e o reserva, usado quando o principal falha (ver agent/llm_call.py). Nome que
+    # começa com "gpt-" (ou "openai/") vai pra OpenAI (agent/llm_openai.py); o resto, pro Gemini.
+    # Ex. pra usar o GPT Luna com o Gemini 3.5 de reserva: LLM_MODEL=gpt-6-luna,
+    # LLM_FALLBACK_MODEL=gemini-flash-lite-latest e OPENAI_API_KEY preenchida
     llm_model: str = os.getenv("LLM_MODEL", "gemini-flash-lite-latest")
     llm_fallback_model: str = os.getenv("LLM_FALLBACK_MODEL", "gemini-3.1-flash-lite")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_base_url: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    # opcional: esforço de raciocínio dos GPT (ex.: "minimal" ou "low", conforme o modelo aceitar)
+    openai_reasoning_effort: str = os.getenv("OPENAI_REASONING_EFFORT", "")
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
 
     db_url: str = os.getenv("SQLALCHEMY_DB_URL")

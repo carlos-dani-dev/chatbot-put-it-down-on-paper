@@ -1,10 +1,16 @@
-"""Toda chamada ao Gemini passa por aqui: tempo máximo, nova tentativa e modelo reserva.
+"""Toda chamada à LLM passa por aqui: tempo máximo, nova tentativa e modelo reserva.
+
+Os modelos vêm do .env (LLM_MODEL e LLM_FALLBACK_MODEL) e podem ser do Gemini ou da OpenAI (nome
+começando com "gpt-", traduzido em agent/llm_openai.py). Os agentes não sabem qual respondeu.
 
 Sequência de uma chamada:
   1. modelo principal; se der erro temporário (5xx, 429, timeout, conexão), tenta de novo;
   2. se falhar de novo, vai pro modelo reserva, com as mesmas tentativas;
   3. se o reserva também falhar, levanta LLMUnavailable (o app.py responde uma mensagem fixa).
 Erro que tentar de novo não resolve (400, chave inválida) sobe na hora: seria bug, não instabilidade.
+Na OpenAI, esse tipo de erro (chave, modelo ou pedido recusado) pula direto pro reserva: é o modelo
+novo que está mal configurado, e o reserva do Gemini segue respondendo enquanto isso é corrigido.
+Modelo da OpenAI sem OPENAI_API_KEY, ou chamada com áudio (transcrição), também vai direto pro reserva.
 
 Duas memórias:
 - Por mensagem: depois de cair pro reserva, as próximas chamadas da MESMA mensagem já vão direto
@@ -21,6 +27,7 @@ import httpx
 from google import genai
 from google.genai import errors, types
 
+from . import llm_openai
 from .config import settings
 from .llm_usage import record_gemini
 
@@ -97,6 +104,8 @@ def reset() -> None:
 # ---------------------------------------------------------------- a chamada
 
 def _transient(exc: Exception) -> bool:
+    if isinstance(exc, llm_openai.OpenAIError):
+        return exc.code >= 500 or exc.code == 429
     if isinstance(exc, errors.ServerError):
         return True
     if isinstance(exc, errors.ClientError):
@@ -111,12 +120,27 @@ def generate(client, *, contents, config, label: str):
 
     last_error = None
     for model in plan:
+        openai = llm_openai.is_openai_model(model)
+        if openai and not (llm_openai.configured() and llm_openai.supports(contents)):
+            if not llm_openai.configured():
+                logger.error("llm %s: %s precisa de OPENAI_API_KEY; pulando pro próximo modelo", label, model)
+            continue
         for attempt in range(1, ATTEMPTS_PER_MODEL + 1):
             try:
-                response = client.models.generate_content(model=model, contents=contents, config=config)
+                if openai:
+                    response = llm_openai.generate(model, contents, config, timeout=TIMEOUT_MS / 1000)
+                else:
+                    response = client.models.generate_content(model=model, contents=contents, config=config)
             except Exception as exc:
                 if not _transient(exc):
-                    raise
+                    if not openai:
+                        raise
+                    # chave, modelo ou pedido recusado pela OpenAI: tentar de novo não resolve, o reserva sim
+                    logger.error("llm %s: %s recusou o pedido, indo pro próximo modelo: %s", label, model, exc)
+                    last_error = exc
+                    if model == PRIMARY_MODEL:
+                        _primary_failed()
+                    break
                 last_error = exc
                 logger.warning("llm %s: %s falhou (tentativa %d/%d): %s",
                                label, model, attempt, ATTEMPTS_PER_MODEL, exc)

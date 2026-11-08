@@ -6,6 +6,7 @@ parâmetro — `def test_x(db, user):` recebe o banco e o usuário prontos. O qu
 `yield` numa fixture roda no fim do teste (limpeza). Cada teste recebe peças novas: nenhum
 teste enxerga o que outro gravou.
 """
+import json
 import os
 
 # Precisa vir ANTES de importar qualquer coisa de `agent/`: o config.py lê as variáveis na
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from google.genai import types
 from sqlalchemy import create_engine, event
@@ -222,6 +224,63 @@ def gemini(monkeypatch):
     return GeminiScript(monkeypatch)
 
 
+class FakeOpenAI:
+    """Faz o papel da API da OpenAI (Chat Completions): devolve as respostas do roteiro, na ordem,
+    e guarda o corpo de cada pedido pra conferir a tradução feita em agent/llm_openai.py."""
+
+    def __init__(self):
+        self._responses: list = []
+        self.requests: list[dict] = []
+
+    def script(self, *responses) -> "FakeOpenAI":
+        self._responses = list(responses)
+        return self
+
+    def post(self, url, headers, body, timeout):
+        self.requests.append(body)
+        if not self._responses:
+            raise AssertionError("o código chamou a OpenAI mais vezes do que o roteiro do teste previa")
+        response = self._responses.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        if isinstance(response, int):  # openai.error(...) no roteiro: a API responde com esse status
+            return httpx.Response(response, json={"error": {"message": "erro simulado"}})
+        return httpx.Response(200, json=response)
+
+    @staticmethod
+    def text(content: str, model: str = "gpt-6-luna-2026-09-23", usage: dict | None = None) -> dict:
+        return {"model": model, "choices": [{"message": {"role": "assistant", "content": content}}],
+                "usage": usage or {"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110}}
+
+    @staticmethod
+    def call(tool: str, /, **args) -> dict:
+        return FakeOpenAI.calls((tool, args))
+
+    @staticmethod
+    def calls(*name_and_args) -> dict:
+        tool_calls = [{"id": f"call_{i}", "type": "function",
+                       "function": {"name": n, "arguments": json.dumps(a)}} for i, (n, a) in enumerate(name_and_args)]
+        return {"model": "gpt-6-luna-2026-09-23",
+                "choices": [{"message": {"role": "assistant", "content": None, "tool_calls": tool_calls}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110}}
+
+    @staticmethod
+    def error(code: int) -> int:
+        return code
+
+
+@pytest.fixture
+def openai(monkeypatch):
+    """GPT Luna como principal e o Gemini 3.5 de reserva, com a API da OpenAI falsa."""
+    from agent import llm_call
+    fake = FakeOpenAI()
+    monkeypatch.setattr("agent.llm_openai._post", fake.post)
+    monkeypatch.setattr("agent.llm_openai.settings.openai_api_key", "chave-de-teste")
+    monkeypatch.setattr(llm_call, "PRIMARY_MODEL", "gpt-6-luna")
+    monkeypatch.setattr(llm_call, "FALLBACK_MODEL", "gemini-flash-lite-latest")
+    return fake
+
+
 # --------------------------------------------------------------------------
 # Mercado Pago falso e plano Pro
 # --------------------------------------------------------------------------
@@ -285,6 +344,11 @@ def _no_real_llm(monkeypatch):
 
     monkeypatch.setattr("google.genai.Client", _blocked)
     monkeypatch.setattr("agent.shared._generate", lambda prompt: "[menu gerado pela LLM]")
+
+    def _blocked_openai(*_args, **_kwargs):
+        raise RealServiceBlocked("o teste tentou chamar a OpenAI de verdade — use a fixture `openai`")
+
+    monkeypatch.setattr("agent.llm_openai._post", _blocked_openai)
 
 
 @pytest.fixture(autouse=True)
